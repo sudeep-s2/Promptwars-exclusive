@@ -13,6 +13,7 @@ from app.services.document_processor import (
     DocumentProcessingException,
 )
 from app.services.analyzer import LegalAnalyzer
+from app.services.workflow_service import DocumentWorkflowService
 from app.services.llm.base import LLMProviderError, ConfigurationError
 from app.services.rag_service import RAGService, RAGError, DocumentNotFoundError
 from app.db.session import get_db, is_database_available, DatabaseUnavailableError, get_session_factory
@@ -53,51 +54,13 @@ async def upload_document(
     try:
         file_bytes = await file.read()
 
-        result = DocumentProcessor.process_pdf(
+        workflow = DocumentWorkflowService()
+        result = workflow.process_and_index_document(
             file_bytes=file_bytes,
             filename=file.filename or "uploaded.pdf",
             content_type=file.content_type,
+            analyze=analyze,
         )
-
-        # Generate a stable UUID for document indexing and retrieval
-        document_id = str(uuid.uuid4())
-        result.document_id = document_id
-
-        # Index canonical chunks into PostgreSQL + pgvector if database is running
-        if is_database_available():
-            try:
-                factory = get_session_factory()
-                if factory:
-                    with factory() as db:
-                        rag_service = RAGService()
-                        rag_service.index_document(
-                            document_id=document_id,
-                            filename=result.filename,
-                            file_type=result.file_type,
-                            file_size=result.file_size,
-                            page_count=result.page_count,
-                            section_count=result.section_count,
-                            chunk_count=result.chunk_count,
-                            chunks=result.chunks,
-                            db=db,
-                        )
-                        logger.info("Indexed document %s into PostgreSQL with pgvector", document_id)
-            except Exception as index_exc:
-                logger.warning("Optional vector indexing skipped or failed: %s", index_exc)
-
-        if analyze:
-            metadata = DocumentMetadata(
-                filename=result.filename,
-                file_type=result.file_type,
-                file_size=result.file_size,
-                page_count=result.page_count,
-                text_length=result.text_length,
-                section_count=result.section_count,
-                chunk_count=result.chunk_count,
-            )
-            analyzer = LegalAnalyzer()
-            result.analysis = analyzer.analyze(chunks=result.chunks, metadata=metadata)
-
         return result
 
     except DocumentProcessingException as dpe:

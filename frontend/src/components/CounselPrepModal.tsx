@@ -21,30 +21,48 @@ export const CounselPrepModal = ({
   if (!isOpen) return null;
 
   const handleCopy = async () => {
-    try {
-      const text = [
-        `============================================================`,
-        `ATTORNEY CONSULTATION PREPARATION SHEET`,
-        `LexLens Automated Legal Information Navigator`,
-        `============================================================`,
-        `Document: ${documentTitle}`,
-        `Generated: ${generatedDate}`,
-        `Notice: For informational consultation preparation only. Not legal advice.`,
-        ``,
-        `TARGETED QUESTIONS TO DISCUSS WITH YOUR ATTORNEY:`,
-        `------------------------------------------------------------`,
-        ...discussionPoints.map(
-          (item, idx) =>
-            `${idx + 1}. [${item.clause_ref}] ${item.topic}\n   RECOMMENDED QUESTION: ${item.recommended_question}\n`
-        ),
-        `============================================================`,
-      ].join('\n');
+    const text = [
+      `============================================================`,
+      `ATTORNEY CONSULTATION PREPARATION SHEET`,
+      `LexLens Automated Legal Information Navigator`,
+      `============================================================`,
+      `Document: ${documentTitle}`,
+      `Generated: ${generatedDate}`,
+      `Notice: For informational consultation preparation only. Not legal advice.`,
+      ``,
+      `TARGETED QUESTIONS TO DISCUSS WITH YOUR ATTORNEY:`,
+      `------------------------------------------------------------`,
+      ...discussionPoints.map(
+        (item, idx) =>
+          `${idx + 1}. [${item.clause_ref}] ${item.topic}\n   RECOMMENDED QUESTION: ${item.recommended_question}\n`
+      ),
+      `============================================================`,
+    ].join('\n');
 
-      await navigator.clipboard.writeText(text);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error('Clipboard API not supported');
+      }
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2200);
     } catch {
-      // Fallback
+      // Fallback for non-secure or restricted clipboard contexts
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2200);
+      } catch (err) {
+        console.error('Copy to clipboard failed:', err);
+      }
     }
   };
 
@@ -77,7 +95,7 @@ export const CounselPrepModal = ({
 
           <div className="prep-questions-list">
             {discussionPoints.map((item, index) => (
-              <div key={item.clause_ref} className="prep-question-card">
+              <div key={`${item.clause_ref}-${index}`} className="prep-question-card">
                 <div className="prep-card-header">
                   <span className="prep-number">{index + 1}</span>
                   <span className="prep-clause-ref">{item.clause_ref}</span>

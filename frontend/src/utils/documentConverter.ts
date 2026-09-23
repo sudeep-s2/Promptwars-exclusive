@@ -78,17 +78,38 @@ export function convertRealResponseToWorkspaceDoc(response: DocumentProcessingRe
         second_party: 'Disclosed in Document',
       };
 
-  const counselPoints = analysis?.counsel_discussion_points?.length
-    ? analysis.counsel_discussion_points.map((p) => ({
-        clause_ref: p.clause_ref,
-        topic: p.topic,
-        recommended_question: p.recommended_question,
-      }))
-    : response.sections.slice(0, 4).map((sec) => ({
-        clause_ref: `Section ${sec.section_title}`,
-        topic: `Review ${sec.section_title}`,
-        recommended_question: `Review obligations and potential liability exposure under ${sec.section_title} (Page ${sec.page_number}) with counsel.`,
-      }));
+  let counselPoints: Array<{ clause_ref: string; topic: string; recommended_question: string }> = [];
+  if (analysis?.counsel_discussion_points && analysis.counsel_discussion_points.length > 0) {
+    counselPoints = analysis.counsel_discussion_points.map((p) => ({
+      clause_ref: p.clause_ref,
+      topic: p.topic,
+      recommended_question: p.recommended_question,
+    }));
+  }
+
+  // If fewer than 4 items, supplement with high-attention findings to guarantee 4-6 focused discussion questions
+  if (counselPoints.length < 4 && clauses.length > 0) {
+    const priorityClauses = clauses.filter((c) => c.attention_level === 'high' || c.attention_level === 'moderate');
+    for (const item of priorityClauses) {
+      if (counselPoints.length >= 6) break;
+      const ref = item.section_title || `Page ${item.page_number}`;
+      if (!counselPoints.some((p) => p.clause_ref === ref)) {
+        counselPoints.push({
+          clause_ref: ref,
+          topic: `Review ${item.title}`,
+          recommended_question: `What specific risk allocations or exposures should be negotiated regarding "${item.title}" (${ref})?`,
+        });
+      }
+    }
+  }
+
+  if (counselPoints.length === 0) {
+    counselPoints = response.sections.slice(0, 4).map((sec) => ({
+      clause_ref: `Section ${sec.section_title}`,
+      topic: `Review ${sec.section_title}`,
+      recommended_question: `Review obligations and potential liability exposure under ${sec.section_title} (Page ${sec.page_number}) with counsel.`,
+    }));
+  }
 
   const suggestedQuestions = analysis?.suggested_questions?.length
     ? analysis.suggested_questions

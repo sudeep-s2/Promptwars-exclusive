@@ -101,6 +101,7 @@ export interface DocumentProcessingResponse {
   chunks: DocumentChunk[];
   analysis?: LegalAnalysis | null;
   document_id?: string | null;
+  indexing_status?: string | null;
 }
 
 export type DocumentUploadResponse = DocumentProcessingResponse;

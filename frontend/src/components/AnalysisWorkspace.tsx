@@ -45,9 +45,9 @@ export const AnalysisWorkspace = ({ document, onReset }: AnalysisWorkspaceProps)
       {/* Provenance Banner for Uploaded Documents */}
       {document.is_real_document && (
         <div className="provenance-banner" role="status">
-          <span className="provenance-icon">⚡</span>
+          <span className="provenance-icon">✦</span>
           <div className="provenance-content">
-            <strong>Live Ingested PDF:</strong> File size, {document.metadata.page_count} page(s), {document.metadata.section_count} detected legal section(s), {document.metadata.chunk_count} chunk(s), and all verbatim excerpts below are extracted directly from your PDF via PyMuPDF. Risk attention ratings and plain-language summaries are preliminary heuristics pending Phase 5 Gemini integration.
+            <strong>Active Document Workspace:</strong> {document.metadata.page_count} page(s), {document.metadata.section_count} section(s), and {document.metadata.chunk_count} chunk(s) extracted via PyMuPDF. Analysis and risk categorization generated via Google Gemini. Verbatim citations and grounded Q&amp;A are indexed in PostgreSQL + pgvector with deterministic chunk verification.
           </div>
         </div>
       )}

@@ -49,6 +49,9 @@ export const Dashboard = () => {
   };
 
   const handleResetToLanding = () => {
+    setSelectedDoc(SAMPLE_SERVICES_AGREEMENT);
+    setIsRealUpload(false);
+    setUploadFilename('');
     setUploadError(null);
     setView('landing');
   };
@@ -127,7 +130,7 @@ export const Dashboard = () => {
       </main>
 
       <footer className="dashboard-footer">
-        <p>LexLens • PromptWars Exclusive Edition — Phase 4: Real PDF Processing &amp; Document Pipeline</p>
+        <p>LexLens • PromptWars Exclusive Edition — Phase 7: Complete MVP Integration</p>
       </footer>
     </div>
   );

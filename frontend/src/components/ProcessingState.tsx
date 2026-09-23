@@ -16,10 +16,12 @@ const SAMPLE_STAGES = [
 
 const REAL_STAGES = [
   'Uploading PDF to FastAPI service...',
-  'Validating document format and magic bytes...',
+  'Validating document format and structure...',
   'Extracting page text and layout via PyMuPDF...',
-  'Detecting legal sections and chunking...',
-  'Assembling structured document workspace...',
+  'Partitioning section-aware canonical chunks...',
+  'Generating Gemini embeddings & indexing in pgvector...',
+  'Running structured legal analysis with Gemini...',
+  'Assembling document workspace with grounded citations...',
 ];
 
 export const ProcessingState = ({
