@@ -12,7 +12,7 @@ export const ExecutiveSummaryCard = ({ summary, isRealDocument = false }: Execut
             {isRealDocument ? '✦ Document Extraction & Structure' : '✦ LexLens Executive Summary'}
           </span>
           {isRealDocument && (
-            <span style={{ fontSize: '11px', background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+            <span className="summary-live-tag">
               Live Parsing
             </span>
           )}

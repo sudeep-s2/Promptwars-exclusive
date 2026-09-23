@@ -130,7 +130,7 @@ export const Dashboard = () => {
       </main>
 
       <footer className="dashboard-footer">
-        <p>LexLens • PromptWars Exclusive Edition — Phase 7: Complete MVP Integration</p>
+        <p>LexLens • Grounded Legal Document Intelligence — PromptWars Exclusive Edition</p>
       </footer>
     </div>
   );

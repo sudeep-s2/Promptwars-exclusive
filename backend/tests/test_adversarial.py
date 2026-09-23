@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import math
@@ -54,7 +55,7 @@ class DeterministicSemanticEmbedder(EmbeddingProvider):
         tokens = self.tokenize(text)
         vec = [0.0] * self._dim
         for t in tokens:
-            idx = hash(t) % self._dim
+            idx = int(hashlib.sha256(t.encode("utf-8")).hexdigest(), 16) % self._dim
             weight = 1.0 + (len(t) / 5.0)
             vec[idx] += weight
 

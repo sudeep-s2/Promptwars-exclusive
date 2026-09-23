@@ -45,7 +45,7 @@ export const ClauseSourceDrawer = ({
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <span className="drawer-category">{clause.category}</span>
               {clause.is_real_extracted && (
-                <span style={{ fontSize: '11px', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                <span className="live-extract-tag">
                   Live Extraction
                 </span>
               )}

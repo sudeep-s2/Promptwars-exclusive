@@ -20,11 +20,11 @@ export const DocumentHeaderBar = ({
           <div className="doc-badge-row" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px' }}>
             <div className="doc-type-badge">{metadata.document_type}</div>
             {isRealDocument ? (
-              <span className="file-badge active" style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: '#dcfce7', color: '#15803d', fontWeight: 600 }}>
+              <span className="file-badge doc-badge-real">
                 ⚡ Real Extracted PDF (PyMuPDF)
               </span>
             ) : (
-              <span className="file-badge" style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#475569', fontWeight: 600 }}>
+              <span className="file-badge doc-badge-sample">
                 📑 Sample Demo Document
               </span>
             )}

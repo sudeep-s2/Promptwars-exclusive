@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LexLensLogo } from './LexLensLogo';
 
 interface ProcessingStateProps {
   documentName: string;
@@ -61,7 +62,9 @@ export const ProcessingState = ({
   return (
     <div className="processing-container" role="status" aria-live="polite">
       <div className="processing-card">
-        <div className="processing-icon-pulse">⚖️</div>
+        <div className="processing-icon-pulse">
+          <LexLensLogo size={44} />
+        </div>
 
         <h2 className="processing-title">
           {isRealUpload ? 'Processing Uploaded Legal PDF' : 'Analyzing Legal Document'}
@@ -69,7 +72,7 @@ export const ProcessingState = ({
         <p className="processing-docname">{documentName}</p>
 
         <div className="processing-stage-indicator" style={{ justifyContent: 'center', margin: '16px 0 8px 0' }}>
-          <span className="stage-text" style={{ fontSize: '15px', color: 'var(--brand-primary, #1e3a8a)', fontWeight: 600 }}>
+          <span className="stage-text" style={{ fontSize: '15px', color: 'var(--accent-primary)', fontWeight: 600 }}>
             {stages[currentStageIndex]}
           </span>
         </div>
