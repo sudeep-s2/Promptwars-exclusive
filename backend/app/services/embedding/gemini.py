@@ -8,14 +8,15 @@ from app.services.embedding.base import EmbeddingProvider, EmbeddingError, Embed
 
 logger = logging.getLogger(__name__)
 
-# Centralized model choice inside provider implementation (do not expose in .env)
-DEFAULT_EMBEDDING_MODEL = "text-embedding-004"
+# Sole Gemini embedding model (centralized inside provider implementation, not in .env)
+DEFAULT_EMBEDDING_MODEL = "gemini-embedding-2"
 DEFAULT_EMBEDDING_DIMENSION = 768
 
 
 class GeminiEmbeddingProvider(EmbeddingProvider):
     """
-    Embedding provider utilizing Google Gemini embedding models via official google-genai SDK.
+    Embedding provider utilizing Google Gemini embedding model gemini-embedding-2 via official google-genai SDK.
+    Explicitly requests output_dimensionality=768 and strictly validates dimension consistency.
     """
 
     def __init__(self, api_key: str = None, model: str = DEFAULT_EMBEDDING_MODEL, dimension: int = DEFAULT_EMBEDDING_DIMENSION):
@@ -40,9 +41,12 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
             raise EmbeddingError("Cannot generate embedding for empty or whitespace-only text.")
 
         try:
+            # Explicitly configure output_dimensionality = 768
+            config = types.EmbedContentConfig(output_dimensionality=self._dimension)
             response = self._client.models.embed_content(
                 model=self._model,
                 contents=text.strip(),
+                config=config,
             )
             
             # Extract embedding values
@@ -57,12 +61,9 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
 
             vals = list(embedding_vals)
             if len(vals) != self._dimension:
-                logger.warning(
-                    "Embedding dimension mismatch: expected %d, got %d. Updating dimension.",
-                    self._dimension,
-                    len(vals),
+                raise EmbeddingError(
+                    f"Embedding dimension mismatch: expected {self._dimension}, but model {self._model} returned {len(vals)} dimensions."
                 )
-                self._dimension = len(vals)
 
             return vals
 

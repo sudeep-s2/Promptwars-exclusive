@@ -147,6 +147,35 @@ def test_gemini_embedding_provider_success():
         vec = provider.embed_text("Article II: Compensation")
         assert len(vec) == 768
         assert mock_client.models.embed_content.called
+        call_kwargs = mock_client.models.embed_content.call_args.kwargs
+        assert call_kwargs["model"] == "gemini-embedding-2"
+        assert call_kwargs["config"].output_dimensionality == 768
+
+
+def test_gemini_embedding_provider_dimension_mismatch_raises():
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.embedding.values = [0.1] * 1536  # Incompatible dimension
+    mock_client.models.embed_content.return_value = mock_response
+
+    with patch("google.genai.Client", return_value=mock_client):
+        provider = GeminiEmbeddingProvider(api_key="fake-test-key", dimension=768)
+        with pytest.raises(EmbeddingError, match="dimension mismatch"):
+            provider.embed_text("Article II: Compensation")
+
+
+def test_clear_all_embeddings_purges_old_vectors():
+    mock_db = MagicMock()
+    mock_result = MagicMock()
+    mock_result.rowcount = 15
+    mock_db.execute.return_value = mock_result
+
+    rag_service = RAGService(embedding_provider=MockEmbeddingProvider())
+    cleared = rag_service.clear_all_embeddings(mock_db)
+
+    assert cleared == 15
+    assert mock_db.execute.called
+    assert mock_db.commit.called
 
 
 # ==============================================================================
@@ -408,7 +437,7 @@ def test_invalid_source_chunk_id_handling():
 
 
 # ==============================================================================
-# 5. EVALUATION DATASET INTEGRITY TEST
+# 5. EVALUATION DATASET INTEGRITY & SAMPLE DOCUMENTS TESTS
 # ==============================================================================
 def test_evaluation_dataset_file_structure():
     with open("backend/tests/rag_eval/legal_qa_eval.json", "r", encoding="utf-8") as f:
@@ -420,3 +449,134 @@ def test_evaluation_dataset_file_structure():
         assert "question_type" in item
         assert "expected_chunk_ids" in item
         assert isinstance(item["expected_chunk_ids"], list)
+
+
+def test_real_sample_documents_indexing_with_gemini_embedding_2():
+    """Verify sample_services_agreement.pdf and sample_nda.pdf indexing with 768d vectors."""
+    import os
+    from app.services.document_processor import DocumentProcessor
+
+    sample_dir = os.path.join(os.path.dirname(__file__), "..", "..", "sample_documents")
+    services_path = os.path.join(sample_dir, "sample_services_agreement.pdf")
+    nda_path = os.path.join(sample_dir, "sample_nda.pdf")
+
+    if not os.path.exists(services_path) or not os.path.exists(nda_path):
+        pytest.skip("Sample documents directory not found")
+
+    with open(services_path, "rb") as f:
+        services_bytes = f.read()
+    with open(nda_path, "rb") as f:
+        nda_bytes = f.read()
+
+    res_services = DocumentProcessor.process_pdf(services_bytes, "sample_services_agreement.pdf")
+    res_nda = DocumentProcessor.process_pdf(nda_bytes, "sample_nda.pdf")
+
+    # Verify chunk attributes
+    assert len(res_services.chunks) > 0
+    assert len(res_nda.chunks) > 0
+
+    for ch in res_services.chunks + res_nda.chunks:
+        assert ch.chunk_id.startswith("chunk-p")
+        assert ch.page_number >= 1
+        assert len(ch.text) > 0
+        assert ch.section_title is None or isinstance(ch.section_title, str)
+
+    embedder = MockEmbeddingProvider(dimension=768)
+    assert embedder.dimension == 768
+
+    mock_db = MagicMock()
+    mock_db.query.return_value.filter.return_value.first.return_value = None
+
+    rag_service = RAGService(embedding_provider=embedder)
+
+    # Index Services Agreement
+    count_sa = rag_service.index_document(
+        document_id="doc-sa-001",
+        filename=res_services.filename,
+        file_type="application/pdf",
+        file_size=res_services.file_size,
+        page_count=res_services.page_count,
+        section_count=res_services.section_count,
+        chunk_count=res_services.chunk_count,
+        chunks=res_services.chunks,
+        db=mock_db,
+    )
+    assert count_sa == len(res_services.chunks)
+
+    # Re-index to verify idempotency
+    mock_db.query.return_value.filter.return_value.first.return_value = Document(id="doc-sa-001")
+    count_reindex = rag_service.index_document(
+        document_id="doc-sa-001",
+        filename=res_services.filename,
+        file_type="application/pdf",
+        file_size=res_services.file_size,
+        page_count=res_services.page_count,
+        section_count=res_services.section_count,
+        chunk_count=res_services.chunk_count,
+        chunks=res_services.chunks,
+        db=mock_db,
+    )
+    assert count_reindex == len(res_services.chunks)
+
+
+def test_rag_evaluation_dataset_queries():
+    """Verify all questions in legal_qa_eval.json against RAG service logic."""
+    with open("backend/tests/rag_eval/legal_qa_eval.json", "r", encoding="utf-8") as f:
+        eval_items = json.load(f)
+
+    doc_id = "doc-eval-contract"
+    chunk_payment = DocumentChunkModel(
+        document_id=doc_id,
+        chunk_id="chunk-p1-002",
+        page_number=1,
+        section_title="ARTICLE II: COMPENSATION AND PAYMENT TERMS",
+        text="Invoices payable Net 30 days. Overdue balances accrue 1.5% interest.",
+        embedding=[0.9, 0.3] + [0.0] * 766,
+    )
+    chunk_term = DocumentChunkModel(
+        document_id=doc_id,
+        chunk_id="chunk-p3-001",
+        page_number=3,
+        section_title="ARTICLE VI: TERMINATION",
+        text="Either party may terminate upon thirty (30) days prior written notice.",
+        embedding=[0.1, 0.95] + [0.0] * 766,
+    )
+
+    embedder = MockEmbeddingProvider(dimension=768)
+    mock_llm = MockRAGLLMProvider()
+    rag_service = RAGService(embedding_provider=embedder, llm_provider=mock_llm)
+
+    for item in eval_items:
+        q = item["question"]
+        q_type = item["question_type"]
+
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = Document(id=doc_id)
+
+        if q_type == "out-of-scope":
+            # Simulate low similarity for out of scope
+            unrelated = DocumentChunkModel(
+                document_id=doc_id,
+                chunk_id="chunk-p1-001",
+                page_number=1,
+                section_title="Definitions",
+                text="Definitions",
+                embedding=[0.0] * 768,
+            )
+            mock_res = MagicMock()
+            mock_res.all.return_value = [(unrelated, 0.85)]  # Distance 0.85 -> similarity 0.15 (< 0.35)
+            mock_db.execute.return_value = mock_res
+
+            res = rag_service.answer_question(document_id=doc_id, question=q, db=mock_db)
+            assert res.grounding_status == "insufficient_context"
+            assert len(res.sources) == 0
+        else:
+            # In-scope
+            target_chunk = chunk_term if "terminat" in q.lower() else chunk_payment
+            mock_res = MagicMock()
+            mock_res.all.return_value = [(target_chunk, 0.05)]  # Similarity 0.95
+            mock_db.execute.return_value = mock_res
+
+            res = rag_service.answer_question(document_id=doc_id, question=q, db=mock_db)
+            assert res.grounding_status == "grounded"
+            assert len(res.sources) >= 1

@@ -66,7 +66,13 @@ LLM_PROVIDER=gemini
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/lexlens
 ```
 
-> **Note on Model Names**: Embedding and LLM model names (`text-embedding-004`, `gemini-2.5-flash`, `grok-4`) are centralized inside the backend provider code. Do NOT configure model names in `.env`.
+> **Embedding & LLM Specifications**:
+> - **Embedding model**: `gemini-embedding-2`
+> - **Output dimensionality**: 768
+> - **Primary LLM model**: `gemini-2.5-flash`
+> - **Backup LLM model**: `grok-4`
+>
+> All model names are centralized inside the backend provider code. Do NOT configure model names in `.env`.
 
 ---
 

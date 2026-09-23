@@ -7,7 +7,7 @@ from pgvector.sqlalchemy import Vector
 
 from app.db.session import Base
 
-EMBEDDING_DIMENSION = 768  # Native dimension for text-embedding-004 / gemini-embedding-2
+EMBEDDING_DIMENSION = 768  # Target dimension for gemini-embedding-2 (output_dimensionality=768)
 
 
 class Document(Base):
@@ -32,7 +32,7 @@ class DocumentChunkModel(Base):
     document_id = Column(String(36), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
     chunk_id = Column(String(64), nullable=False, index=True)
     page_number = Column(Integer, nullable=False)
-    section_title = Column(String(255), nullable=False)
+    section_title = Column(String(255), nullable=True)
     text = Column(Text, nullable=False)
     embedding = Column(Vector(EMBEDDING_DIMENSION), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

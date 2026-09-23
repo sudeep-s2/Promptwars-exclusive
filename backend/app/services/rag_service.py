@@ -127,7 +127,7 @@ class RAGService:
                     document_id=document_id,
                     chunk_id=chunk.chunk_id,
                     page_number=chunk.page_number,
-                    section_title=chunk.section_title,
+                    section_title=chunk.section_title or "General / Preamble",
                     text=chunk.text,
                     embedding=emb,
                 )
@@ -142,6 +142,22 @@ class RAGService:
             db.rollback()
             logger.error("Failed to index document %s: %s", document_id, exc)
             raise RAGError(f"Document indexing failed: {str(exc)}") from exc
+
+    def clear_all_embeddings(self, db: Session) -> int:
+        """
+        Discards all existing chunk embeddings across all documents.
+        Ensures clean separation and prevents mixing incompatible embedding spaces.
+        """
+        try:
+            result = db.execute(delete(DocumentChunkModel))
+            db.commit()
+            deleted_count = result.rowcount if hasattr(result, "rowcount") else 0
+            logger.info("Cleared %s existing chunk embeddings from database for model migration.", deleted_count)
+            return deleted_count
+        except SQLAlchemyError as exc:
+            db.rollback()
+            logger.error("Failed to clear embeddings: %s", exc)
+            raise RAGError(f"Failed to clear embeddings: {str(exc)}") from exc
 
     def retrieve_relevant_chunks(
         self,
