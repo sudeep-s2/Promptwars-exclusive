@@ -1,0 +1,82 @@
+[
+  {
+    "id": "eval-01",
+    "question": "What are the payment deadlines and what happens if payment is late?",
+    "question_type": "deadline",
+    "expected_chunk_ids": ["chunk-p1-002"],
+    "expected_section": "ARTICLE II: COMPENSATION AND PAYMENT TERMS",
+    "notes": "Testing payment deadline (30 days) and interest rate penalty (1.5% per month)."
+  },
+  {
+    "id": "eval-02",
+    "question": "Who owns intellectual property and deliverables created under this agreement?",
+    "question_type": "obligation",
+    "expected_chunk_ids": ["chunk-p2-001"],
+    "expected_section": "ARTICLE III: INTELLECTUAL PROPERTY RIGHTS",
+    "notes": "Testing work made for hire clause and transfer of ownership upon full payment."
+  },
+  {
+    "id": "eval-03",
+    "question": "What is the notice period required to terminate this agreement?",
+    "question_type": "termination",
+    "expected_chunk_ids": ["chunk-p3-001"],
+    "expected_section": "ARTICLE VI: TERMINATION",
+    "notes": "Testing termination for convenience with thirty (30) days prior written notice."
+  },
+  {
+    "id": "eval-04",
+    "question": "What is the maximum aggregate liability limit under this contract?",
+    "question_type": "financial",
+    "expected_chunk_ids": ["chunk-p3-002"],
+    "expected_section": "ARTICLE V: LIMITATION OF LIABILITY",
+    "notes": "Testing 12-month trailing fee liability ceiling."
+  },
+  {
+    "id": "eval-05",
+    "question": "Is indemnification for intellectual property infringement subject to a liability cap?",
+    "question_type": "cross-section",
+    "expected_chunk_ids": ["chunk-p2-002", "chunk-p3-002"],
+    "expected_section": "ARTICLE IV: INDEMNIFICATION AND WARRANTIES",
+    "notes": "Cross-sectional analysis between Article IV (uncapped IP indemnity) and Article V (liability cap)."
+  },
+  {
+    "id": "eval-06",
+    "question": "What obligations survive after termination of this agreement?",
+    "question_type": "obligation",
+    "expected_chunk_ids": ["chunk-p3-001"],
+    "expected_section": "ARTICLE VI: TERMINATION",
+    "notes": "Surviving obligations regarding confidentiality, IP ownership, and indemnities."
+  },
+  {
+    "id": "eval-07",
+    "question": "Who is the current Prime Minister of India?",
+    "question_type": "out-of-scope",
+    "expected_chunk_ids": [],
+    "expected_section": null,
+    "notes": "Testing out-of-scope query refusal. Must return insufficient_context and not pretend the contract contains political trivia."
+  },
+  {
+    "id": "eval-08",
+    "question": "What is the employee health insurance benefit plan under this agreement?",
+    "question_type": "out-of-scope",
+    "expected_chunk_ids": [],
+    "expected_section": null,
+    "notes": "Contractual topic not covered by a commercial services agreement. Must trigger insufficient context."
+  },
+  {
+    "id": "eval-09",
+    "question": "What happens if one party breaches this agreement?",
+    "question_type": "termination",
+    "expected_chunk_ids": ["chunk-p3-001"],
+    "expected_section": "ARTICLE VI: TERMINATION",
+    "notes": "Testing material breach cure period (30 days written notice)."
+  },
+  {
+    "id": "eval-10",
+    "question": "Which state law governs this contract?",
+    "question_type": "fact lookup",
+    "expected_chunk_ids": ["chunk-p3-003"],
+    "expected_section": "ARTICLE VII: GENERAL PROVISIONS",
+    "notes": "Governing law clause (State of Delaware)."
+  }
+]

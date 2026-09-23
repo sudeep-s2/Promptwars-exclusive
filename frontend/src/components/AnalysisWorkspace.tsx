@@ -91,7 +91,22 @@ export const AnalysisWorkspace = ({ document, onReset }: AnalysisWorkspaceProps)
         suggestedQuestions={document.suggested_questions}
         qaDatabase={document.qa_database}
         documentName={document.filename}
+        documentId={document.id}
         rawChunks={document.raw_chunks}
+        onOpenSource={(src) => {
+          setSelectedClause({
+            id: `src-${src.chunk_id}`,
+            category: 'Obligations',
+            attention_level: 'standard',
+            title: src.section_title,
+            plain_english: `Verified clause supporting your question answer from ${src.section_title}.`,
+            why_it_matters: 'Retrieved via semantic vector search in PostgreSQL + pgvector and verified against authentic document chunks.',
+            page_number: src.page_number,
+            section_title: src.section_title,
+            verbatim_excerpt: src.text,
+            is_real_extracted: true,
+          });
+        }}
       />
 
       {/* 6. Clause Source Verification Drawer */}

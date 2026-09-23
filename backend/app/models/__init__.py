@@ -1,1 +1,3 @@
-"""Data models package (placeholder for future database and domain models)."""
+from app.models.document import Document, DocumentChunkModel, EMBEDDING_DIMENSION
+
+__all__ = ["Document", "DocumentChunkModel", "EMBEDDING_DIMENSION"]

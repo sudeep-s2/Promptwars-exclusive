@@ -70,6 +70,23 @@ export interface QAResponse {
   source_citation: string;
   page_number: number;
   verbatim_excerpt?: string | null;
+  source_chunk_id?: string | null;
+}
+
+export interface SourceCitation {
+  chunk_id: string;
+  page_number: number;
+  section_title: string;
+  text: string;
+  similarity_score?: number | null;
+}
+
+export interface GroundedAnswerResponse {
+  question: string;
+  answer: string;
+  sources: SourceCitation[];
+  grounding_status: 'grounded' | 'insufficient_context';
+  confidence_score: number;
 }
 
 export interface DocumentProcessingResponse {
@@ -83,6 +100,7 @@ export interface DocumentProcessingResponse {
   sections: DocumentSection[];
   chunks: DocumentChunk[];
   analysis?: LegalAnalysis | null;
+  document_id?: string | null;
 }
 
 export type DocumentUploadResponse = DocumentProcessingResponse;

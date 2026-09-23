@@ -1,5 +1,5 @@
 import type { HealthResponse } from '../types/health';
-import type { DocumentProcessingResponse, DocumentChunk, QAResponse } from '../types/document';
+import type { DocumentProcessingResponse, DocumentChunk, QAResponse, GroundedAnswerResponse } from '../types/document';
 
 const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -91,6 +91,39 @@ export async function askQuestion(
   }
 
   const data: QAResponse = await response.json();
+  return data;
+}
+
+/**
+ * Query indexed document chunks in PostgreSQL + pgvector via RAG endpoint.
+ */
+export async function askDocumentQuestion(
+  documentId: string,
+  question: string
+): Promise<GroundedAnswerResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/questions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({ question }),
+  });
+
+  if (!response.ok) {
+    let errorMessage = `RAG Q&A query failed (${response.status} ${response.statusText})`;
+    try {
+      const errorJson = await response.json();
+      if (errorJson && typeof errorJson.detail === 'string') {
+        errorMessage = errorJson.detail;
+      }
+    } catch {
+      // Fallback
+    }
+    throw new Error(errorMessage);
+  }
+
+  const data: GroundedAnswerResponse = await response.json();
   return data;
 }
 

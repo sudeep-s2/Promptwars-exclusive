@@ -100,7 +100,7 @@ export function convertRealResponseToWorkspaceDoc(response: DocumentProcessingRe
       ];
 
   return {
-    id: `real-doc-${Date.now()}`,
+    id: response.document_id || `real-doc-${Date.now()}`,
     filename: response.filename,
     is_real_document: true,
     metadata: {
