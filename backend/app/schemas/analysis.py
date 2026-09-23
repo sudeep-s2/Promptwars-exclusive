@@ -129,3 +129,4 @@ class QAResponse(BaseModel):
     page_number: int = Field(..., description="1-indexed source page")
     verbatim_excerpt: Optional[str] = Field(None, description="Authentic verbatim text from genuine DocumentChunk")
     source_chunk_id: Optional[str] = Field(None, description="Grounding chunk identifier")
+    mode: Optional[str] = Field("degraded_direct_chunks", description="Operational mode: 'degraded_direct_chunks'")

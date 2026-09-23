@@ -59,6 +59,7 @@ export interface MockLegalDocument {
   id: string;
   filename: string;
   is_real_document?: boolean;
+  indexing_status?: string | null;
   metadata: DocumentMetadataSummary;
   executive_summary: string;
   clauses: ClauseFinding[];

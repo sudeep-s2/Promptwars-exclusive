@@ -71,6 +71,7 @@ export interface QAResponse {
   page_number: number;
   verbatim_excerpt?: string | null;
   source_chunk_id?: string | null;
+  mode?: 'vector_rag' | 'degraded_direct_chunks' | string;
 }
 
 export interface SourceCitation {
@@ -87,6 +88,7 @@ export interface GroundedAnswerResponse {
   sources: SourceCitation[];
   grounding_status: 'grounded' | 'insufficient_context';
   confidence_score: number;
+  mode?: 'vector_rag' | 'degraded_direct_chunks' | string;
 }
 
 export interface DocumentProcessingResponse {

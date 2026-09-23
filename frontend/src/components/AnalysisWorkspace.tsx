@@ -47,7 +47,7 @@ export const AnalysisWorkspace = ({ document, onReset }: AnalysisWorkspaceProps)
         <div className="provenance-banner" role="status">
           <span className="provenance-icon">✦</span>
           <div className="provenance-content">
-            <strong>Active Document Workspace:</strong> {document.metadata.page_count} page(s), {document.metadata.section_count} section(s), and {document.metadata.chunk_count} chunk(s) extracted via PyMuPDF. Analysis and risk categorization generated via Google Gemini. Verbatim citations and grounded Q&amp;A are indexed in PostgreSQL + pgvector with deterministic chunk verification.
+            <strong>Active Document Workspace:</strong> {document.metadata.page_count} page(s), {document.metadata.section_count} section(s), and {document.metadata.chunk_count} chunk(s) extracted via PyMuPDF. Analysis and risk categorization generated via Google Gemini. {document.indexing_status === 'indexed' ? 'Indexed in PostgreSQL + pgvector for semantic retrieval with deterministic chunk verification.' : 'Vector DB offline: Q&A operating in direct in-flight chunk evaluation mode.'}
           </div>
         </div>
       )}
@@ -93,6 +93,7 @@ export const AnalysisWorkspace = ({ document, onReset }: AnalysisWorkspaceProps)
         documentName={document.filename}
         documentId={document.id}
         rawChunks={document.raw_chunks}
+        indexingStatus={document.indexing_status}
         onOpenSource={(src) => {
           setSelectedClause({
             id: `src-${src.chunk_id}`,

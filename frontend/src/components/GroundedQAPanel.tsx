@@ -9,6 +9,7 @@ interface GroundedQAPanelProps {
   documentName: string;
   documentId?: string;
   rawChunks?: DocumentChunk[];
+  indexingStatus?: string | null;
   onOpenSource?: (source: { page_number: number; section_title: string; text: string; chunk_id: string }) => void;
 }
 
@@ -19,6 +20,7 @@ interface DisplayedQA {
   sources: SourceCitation[];
   legacySourceCitation?: string;
   legacyPageNumber?: number;
+  mode?: 'vector_rag' | 'degraded_direct_chunks' | 'sample_offline';
 }
 
 export const GroundedQAPanel = ({
@@ -27,6 +29,7 @@ export const GroundedQAPanel = ({
   documentName,
   documentId,
   rawChunks,
+  indexingStatus,
   onOpenSource,
 }: GroundedQAPanelProps) => {
   const [query, setQuery] = useState('');
@@ -39,6 +42,7 @@ export const GroundedQAPanel = ({
         sources: [],
         legacySourceCitation: qaDatabase[0].source,
         legacyPageNumber: qaDatabase[0].page_number,
+        mode: 'sample_offline',
       };
     }
     return null;
@@ -60,6 +64,7 @@ export const GroundedQAPanel = ({
           answer: ragRes.answer,
           groundingStatus: ragRes.grounding_status,
           sources: ragRes.sources,
+          mode: 'vector_rag',
         });
         setIsLoading(false);
         return;
@@ -68,7 +73,7 @@ export const GroundedQAPanel = ({
       }
     }
 
-    // 2. Direct Chunk Grounding Fallback: In-flight chunk evaluation via LLM provider
+    // 2. Direct Chunk Grounding Fallback: In-flight chunk evaluation via LLM provider (Degraded Mode)
     if (rawChunks && rawChunks.length > 0) {
       try {
         const qaRes = await askQuestion(questionText, rawChunks);
@@ -84,6 +89,7 @@ export const GroundedQAPanel = ({
               text: qaRes.verbatim_excerpt || '',
             },
           ],
+          mode: 'degraded_direct_chunks',
         });
         setIsLoading(false);
         return;
@@ -125,6 +131,7 @@ export const GroundedQAPanel = ({
         sources: [],
         legacySourceCitation: match.source,
         legacyPageNumber: match.page_number,
+        mode: 'sample_offline',
       });
     } else {
       setActiveQA({
@@ -134,6 +141,7 @@ export const GroundedQAPanel = ({
         sources: [],
         legacySourceCitation: 'Document-wide search · No explicit matching clauses found',
         legacyPageNumber: 1,
+        mode: 'sample_offline',
       });
     }
     setIsLoading(false);
@@ -195,13 +203,34 @@ export const GroundedQAPanel = ({
       {isLoading ? (
         <div className="qa-loading-box">
           <div className="spinner-progress-small" />
-          <span>Performing vector similarity search & verifying grounded citations...</span>
+          <span>
+            {indexingStatus === 'indexed'
+              ? 'Performing vector similarity search & verifying grounded citations in pgvector...'
+              : 'Evaluating in-flight document chunks & verifying grounded citations (Direct Mode)...'}
+          </span>
         </div>
       ) : (
         activeQA && (
           <div className="qa-result-box">
-            <div className="qa-query-label">
-              <strong>Q: {activeQA.question}</strong>
+            <div className="qa-result-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div className="qa-query-label">
+                <strong>Q: {activeQA.question}</strong>
+              </div>
+              {activeQA.mode === 'vector_rag' && (
+                <span className="qa-mode-badge rag-badge" title="Retrieved via PostgreSQL + pgvector cosine similarity">
+                  ✦ Semantic Vector RAG
+                </span>
+              )}
+              {activeQA.mode === 'degraded_direct_chunks' && (
+                <span className="qa-mode-badge degraded-badge" title="Vector database offline: evaluated directly against in-flight chunks">
+                  ⚡ Direct Chunks (DB Offline)
+                </span>
+              )}
+              {activeQA.mode === 'sample_offline' && (
+                <span className="qa-mode-badge sample-badge" title="Pre-indexed sample agreement knowledge base">
+                  📑 Sample Agreement
+                </span>
+              )}
             </div>
 
             {activeQA.groundingStatus === 'insufficient_context' && (
@@ -244,9 +273,27 @@ export const GroundedQAPanel = ({
                 </div>
               </div>
             ) : activeQA.legacySourceCitation ? (
-              <div className="qa-source-pill">
-                <span className="source-icon">📄</span>
-                <span className="source-text">{activeQA.legacySourceCitation}</span>
+              <div className="qa-sources-list">
+                <span className="qa-sources-title">Verified Citations:</span>
+                <div className="qa-sources-chips">
+                  <button
+                    type="button"
+                    className="qa-source-pill clickable"
+                    onClick={() =>
+                      onOpenSource?.({
+                        page_number: activeQA.legacyPageNumber || 1,
+                        section_title: activeQA.legacySourceCitation || 'Agreement Excerpt',
+                        text: activeQA.answer,
+                        chunk_id: 'sample-source-chunk',
+                      })
+                    }
+                    title="Click to view verified source text in drawer"
+                  >
+                    <span className="source-icon">📄</span>
+                    <span className="source-text">{activeQA.legacySourceCitation}</span>
+                    <span className="source-verify-tag">Inspect ↗</span>
+                  </button>
+                </div>
               </div>
             ) : null}
           </div>

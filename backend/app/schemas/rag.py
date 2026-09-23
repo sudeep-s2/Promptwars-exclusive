@@ -29,3 +29,4 @@ class GroundedAnswerResponse(BaseModel):
         description="'grounded' if supported by retrieved clauses; 'insufficient_context' if document does not address the question",
     )
     confidence_score: float = Field(..., ge=0.0, le=1.0, description="Confidence metric reflecting retrieval relevance and grounding")
+    mode: Optional[str] = Field("vector_rag", description="Operational mode: 'vector_rag'")

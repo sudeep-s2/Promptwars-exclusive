@@ -124,6 +124,7 @@ export function convertRealResponseToWorkspaceDoc(response: DocumentProcessingRe
     id: response.document_id || `real-doc-${Date.now()}`,
     filename: response.filename,
     is_real_document: true,
+    indexing_status: response.indexing_status,
     metadata: {
       filename: response.filename,
       document_type: analysis?.executive_summary?.document_type || 'Live Ingested PDF',

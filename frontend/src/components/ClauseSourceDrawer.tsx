@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ClauseFinding } from '../types/workspace';
 
 interface ClauseSourceDrawerProps {
@@ -13,6 +13,16 @@ export const ClauseSourceDrawer = ({
   onAskAboutClause,
 }: ClauseSourceDrawerProps) => {
   const [isCopied, setIsCopied] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   if (!clause) return null;
 
