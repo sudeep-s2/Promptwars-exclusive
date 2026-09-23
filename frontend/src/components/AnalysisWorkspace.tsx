@@ -91,6 +91,7 @@ export const AnalysisWorkspace = ({ document, onReset }: AnalysisWorkspaceProps)
         suggestedQuestions={document.suggested_questions}
         qaDatabase={document.qa_database}
         documentName={document.filename}
+        rawChunks={document.raw_chunks}
       />
 
       {/* 6. Clause Source Verification Drawer */}

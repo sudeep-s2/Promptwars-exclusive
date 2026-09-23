@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import type { QAPair } from '../types/workspace';
+import type { DocumentChunk } from '../types/document';
+import { askQuestion } from '../services/api';
 
 interface GroundedQAPanelProps {
   suggestedQuestions: string[];
   qaDatabase: QAPair[];
   documentName: string;
+  rawChunks?: DocumentChunk[];
 }
 
 export const GroundedQAPanel = ({
   suggestedQuestions,
   qaDatabase,
   documentName,
+  rawChunks,
 }: GroundedQAPanelProps) => {
   const [query, setQuery] = useState('');
   const [activeQA, setActiveQA] = useState<QAPair | null>(
@@ -18,54 +22,67 @@ export const GroundedQAPanel = ({
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleAsk = (questionText: string) => {
+  const handleAsk = async (questionText: string) => {
     if (!questionText.trim()) return;
 
     setIsLoading(true);
     setQuery(questionText);
 
-    // Simulate short retrieval & synthesis latency (400ms)
-    setTimeout(() => {
-      const qLower = questionText.toLowerCase();
-
-      // Find best match in mock qa database
-      const match = qaDatabase.find((item) => {
-        const itemLower = item.question.toLowerCase();
-        if (qLower.includes('payment') || qLower.includes('invoice') || qLower.includes('deadline')) {
-          return itemLower.includes('payment');
-        }
-        if (qLower.includes('terminat') || qLower.includes('cancel') || qLower.includes('notice')) {
-          return itemLower.includes('termination');
-        }
-        if (qLower.includes('intellectual') || qLower.includes('ip') || qLower.includes('property') || qLower.includes('own')) {
-          return itemLower.includes('intellectual') || itemLower.includes('property');
-        }
-        if (qLower.includes('obligation') || qLower.includes('continue') || qLower.includes('survive')) {
-          return itemLower.includes('obligation') || itemLower.includes('continue');
-        }
-        if (qLower.includes('confidential')) {
-          return itemLower.includes('confidential');
-        }
-        if (qLower.includes('law') || qLower.includes('state') || qLower.includes('delaware')) {
-          return itemLower.includes('law');
-        }
-        return itemLower.includes(qLower) || qLower.includes(itemLower);
-      });
-
-      if (match) {
-        setActiveQA(match);
-      } else {
-        // Fallback grounded answer
+    // If live document chunks exist, query the backend /api/documents/qa endpoint
+    if (rawChunks && rawChunks.length > 0) {
+      try {
+        const qaRes = await askQuestion(questionText, rawChunks);
         setActiveQA({
-          id: 'qa-fallback',
-          question: questionText,
-          answer: `The uploaded document '${documentName}' does not contain specific terms addressing '${questionText}'. We recommend flagging this topic for consultation with your legal professional.`,
-          source: 'Document-wide search · No explicit matching clauses found',
-          page_number: 1,
+          id: `qa-${Date.now()}`,
+          question: qaRes.question,
+          answer: qaRes.answer,
+          source: qaRes.source_citation,
+          page_number: qaRes.page_number,
         });
+        setIsLoading(false);
+        return;
+      } catch {
+        // Fallback to local matching if API query fails or key not configured
       }
-      setIsLoading(false);
-    }, 400);
+    }
+
+    // Local / Sample matching fallback
+    const qLower = questionText.toLowerCase();
+    const match = qaDatabase.find((item) => {
+      const itemLower = item.question.toLowerCase();
+      if (qLower.includes('payment') || qLower.includes('invoice') || qLower.includes('deadline')) {
+        return itemLower.includes('payment');
+      }
+      if (qLower.includes('terminat') || qLower.includes('cancel') || qLower.includes('notice')) {
+        return itemLower.includes('termination');
+      }
+      if (qLower.includes('intellectual') || qLower.includes('ip') || qLower.includes('property') || qLower.includes('own')) {
+        return itemLower.includes('intellectual') || itemLower.includes('property');
+      }
+      if (qLower.includes('obligation') || qLower.includes('continue') || qLower.includes('survive')) {
+        return itemLower.includes('obligation') || itemLower.includes('continue');
+      }
+      if (qLower.includes('confidential')) {
+        return itemLower.includes('confidential');
+      }
+      if (qLower.includes('law') || qLower.includes('state') || qLower.includes('delaware')) {
+        return itemLower.includes('law');
+      }
+      return itemLower.includes(qLower) || qLower.includes(itemLower);
+    });
+
+    if (match) {
+      setActiveQA(match);
+    } else {
+      setActiveQA({
+        id: 'qa-fallback',
+        question: questionText,
+        answer: `The document '${documentName}' does not contain specific terms addressing '${questionText}'. We recommend flagging this topic for consultation with your legal professional.`,
+        source: 'Document-wide search · No explicit matching clauses found',
+        page_number: 1,
+      });
+    }
+    setIsLoading(false);
   };
 
   return (
