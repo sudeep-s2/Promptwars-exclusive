@@ -48,10 +48,10 @@ Non-lawyers encounter binding legal instruments under high-stakes, time-sensitiv
   - Indemnification clauses with unlimited liability for consequential damages.
   - Net-60 or "pay-when-paid" payment terms and unilateral termination triggers.
 - **What They Actually Need**: Instant triage: *"Which 3 clauses expose me to catastrophic personal liability or threaten my copyright, and what should I negotiate?"*
-- **Current Workarounds**: Skimming headers, searching Google or Reddit for boilerplate clauses, or blind-signing due to deal momentum.
+- **Current Workarounds**: Skimming headers, searching web forums or search engines for boilerplate clauses, or signing with minimal review due to deal momentum and fear of delaying engagements.
 - **Failure Point of Existing Process**: Accidental waiver of IP rights; exposure to personal indemnification claims without commercial insurance.
-- **Evidence**:
-  - *[Research Finding]* A 2023 study by Stanford Legal Design Lab revealed that over 82% of freelancers have signed contracts containing clauses they admitted they did not understand, primarily driven by fear of slowing down client onboarding ([Stanford Legal Design Lab](https://legaltechdesign.com/)).
+- **Evidence & Field Observations**:
+  - *[Field Observation & Legal Design Literature]* Qualitative user studies and legal design research consistently show that freelancers, solo contractors, and tenants routinely sign standardized contracts containing complex clauses they do not fully understand, primarily driven by asymmetric bargaining power, fear of friction in business onboarding, and prohibitive legal fees ([Stanford Legal Design Lab](https://legaltechdesign.com/)).
 
 ### User Persona 2: The Residential Tenant
 - **Context & Situation**: An individual or family signing a 25-page residential lease in a competitive urban rental market under a 24-hour signing deadline.

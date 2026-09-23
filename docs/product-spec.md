@@ -118,7 +118,7 @@ To ensure high reliability, impeccable source grounding, and a crisp <4-minute d
 - **Backend Action**: Retrieves most relevant chunks via semantic search.
 - **AI Action**: Synthesizes direct answer strictly bounded to retrieved chunks, appending `[Page X, Section Y]` citations. If text does not contain the answer, explicitly states: *"The uploaded document does not contain terms addressing this question."*
 - **Output**: Conversational answer with clickable citation pills highlighting the exact source passage.
-- **Why in MVP**: Provides dynamic exploration beyond static summaries while enforcing zero hallucination.
+- **Why in MVP**: Provides dynamic exploration beyond static summaries while grounding answers strictly in retrieved document content and displaying source excerpts for verification to minimize unsupported responses.
 
 #### 4. Counsel Prep Sheet & Actionable Checklist
 - **User Problem Solved**: Users don't know how to talk to a lawyer or what questions to ask.

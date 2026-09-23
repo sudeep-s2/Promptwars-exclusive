@@ -193,6 +193,6 @@ Every UI card visually distinguishes between:
 | **0:30 – 1:00** | Ingestion | Upload Dropzone | Drag and drop `sample_services_agreement.pdf`. Show instant in-memory processing progress without lag. |
 | **1:00 – 1:45** | Executive Overview & Radar | Main Dashboard | Tour the Executive Summary (Parties, Term, Fees). Click "High Attention" filter to instantly reveal the uncapped liability clause. |
 | **1:45 – 2:30** | Explainability Drilldown | Clause Drawer | Click "View Source". Demonstrate the 3-Tier model: Plain English translation side-by-side with verbatim text on Page 2. Copy excerpt. |
-| **2:30 – 3:15** | Grounded Q&A | Q&A Panel | Ask: *"What are the termination requirements?"*. Show grounded response citing `[Page 3, Section 6.1]` with zero hallucination. |
+| **2:30 – 3:15** | Grounded Q&A | Q&A Panel | Ask: *"What are the termination requirements?"*. Show grounded response citing `[Page 3, Section 6.1]`, grounding answers in retrieved document content and displaying source excerpts for verification. |
 | **3:15 – 3:50** | Actionable Output | Counsel Prep Modal | Click "Generate Attorney Prep Sheet". Display structured questions for counsel review. Click "Copy Prep Sheet". |
 | **3:50 – 4:00** | Wrap-Up | Summary Card | Reiterate: LexLens delivers instant comprehension and prepares users for professional review, ethically and reliably. |
