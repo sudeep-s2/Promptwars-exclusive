@@ -169,7 +169,7 @@ async def ask_document_question(
 @router.post(
     "/qa",
     response_model=QAResponse,
-    summary="Direct Document-Grounded Legal Q&A (Phase 5 Compatibility)",
+    summary="Direct Document-Grounded Legal Q&A (Direct Chunk Fallback)",
     description="Answers questions strictly grounded in provided document chunks without requiring a database index.",
 )
 async def grounded_qa(body: QABody):

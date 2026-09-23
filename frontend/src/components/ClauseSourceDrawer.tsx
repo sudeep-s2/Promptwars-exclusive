@@ -52,9 +52,7 @@ export const ClauseSourceDrawer = ({
           <div className="drawer-tier tier-interpretation">
             <div className="tier-header">
               <span className="tier-badge ai-badge">
-                {clause.is_real_extracted
-                  ? '✦ Plain-Language Overview [Prototype Preview]'
-                  : '✦ LexLens Plain-Language Translation'}
+                ✦ LexLens Plain-Language Translation
               </span>
               <span className={`drawer-attention-tag tag-${clause.attention_level}`}>
                 {clause.attention_level === 'high'

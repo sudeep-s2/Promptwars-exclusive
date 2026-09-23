@@ -10,7 +10,7 @@ export const Header = () => {
           </div>
         </div>
         <div className="header-badge">
-          <span className="edition-badge">Exclusive Edition • Phase 1</span>
+          <span className="edition-badge">Exclusive Edition • MVP</span>
         </div>
       </div>
     </header>

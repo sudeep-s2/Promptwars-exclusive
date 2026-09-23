@@ -19,10 +19,11 @@ Legal contracts, non-disclosure agreements, terms of service, and regulatory fil
 
 ## 2. Architecture Overview
 
-LexLens follows a decoupled client-server architecture:
-- **Frontend**: React 19 + TypeScript + Vite. Provides drag-and-drop document upload, connection testing, document metadata display, and an interactive section-aware chunk inspector.
-- **Backend**: Python 3.13 + FastAPI + PyMuPDF. Exposes REST APIs, enforces file validation (PDF-only, <=10 MB), performs in-flight page-by-page text extraction, cleans legal text, detects legal headings, and produces deterministic structured chunks.
-- **Communication**: Frontend and backend communicate purely over HTTP REST APIs using JSON and multipart/form-data.
+LexLens follows a decoupled client-server architecture with an integrated RAG and GenAI analysis pipeline:
+- **Frontend**: React 19 + TypeScript + Vite. Provides drag-and-drop document upload, executive analysis workspace, Attention Radar risk tiers, Clause Source Drawer, grounded Q&A with verifiable citations, and Attorney Consultation Prep Sheet.
+- **Backend**: Python 3.13 + FastAPI + PyMuPDF. Exposes REST APIs, enforces file validation (PDF-only, <=10 MB), performs page-by-page text extraction, cleans legal text, detects legal headings, and produces deterministic structured canonical chunks (`chunk-p{page}-{idx:03d}`).
+- **Vector Storage & Semantic Retrieval**: PostgreSQL with pgvector. Stores document chunk records and 768-dimensional embeddings generated via Google Gemini (`gemini-embedding-2`). Executes exact cosine similarity search scoped strictly to the active `document_id`.
+- **Structured Legal Analysis**: Google Gemini (Flash default) with xAI Grok fallback. Produces structured legal analysis and answers queries strictly grounded in document chunks.
 
 ### Architecture Diagram
 
@@ -52,22 +53,19 @@ LexLens follows a decoupled client-server architecture:
 |  |  - API Router (/api):                                     |  |
 |  |      * GET  /api/health                                   |  |
 |  |      * POST /api/documents/upload                         |  |
-|  |  - Pydantic Validation Schemas (app/schemas/)             |  |
+|  |      * POST /api/documents/rag/qa                         |  |
+|  |      * POST /api/documents/qa (Direct chunk fallback)     |  |
+|  |  - DocumentWorkflowService (Centralized Orchestration)    |  |
 |  +-----------------------------------------------------------+  |
-|                                |                                |
-|                                v                                |
-|  +-----------------------------------------------------------+  |
-|  |         Document Processor Service (PyMuPDF)              |  |
-|  |  - In-flight memory validation (PDF magic bytes, size)    |  |
-|  |  - Page-by-page extraction (1-indexed page preservation)  |  |
-|  |  - Text cleaning (line wrap hyphens, excess newlines)     |  |
-|  |  - Section detection (Articles, Sections, Clauses)        |  |
-|  |  - Deterministic chunking (chunk-p{page}-{idx})           |  |
-|  +-----------------------------------------------------------+  |
-|                                |                                |
-|                                v                                |
-|              [Future Phases: RAG / LLM / Storage]               |
-|     (Embeddings, Vector DB, Grounded Legal Q&A, Summaries)      |
+|            |                           |               |        |
+|            v                           v               v        |
+|  +-------------------+       +----------------+ +-------------+ |
+|  | DocumentProcessor |       |   RAGService   | |LegalAnalyzer| |
+|  |  - PyMuPDF text   |       |  - pgvector DB | | - Gemini    | |
+|  |  - Canonical      |       |  - Gemini 768d | |   Flash     | |
+|  |    chunk-p{page}  |       |    embeddings  | | - Structured| |
+|  |  - Heading parser |       |  - Cosine k-NN | |   hydration | |
+|  +-------------------+       +----------------+ +-------------+ |
 +-----------------------------------------------------------------+
 ```
 
@@ -86,6 +84,9 @@ LexLens follows a decoupled client-server architecture:
 - **FastAPI**: High-performance REST API framework.
 - **Uvicorn**: ASGI web server.
 - **PyMuPDF (`pymupdf`)**: High-performance, memory-efficient PDF text extraction.
+- **PostgreSQL + pgvector**: Vector database storing document chunks and 768-dim embeddings.
+- **Google Gemini**: Default LLM for structured document analysis and `gemini-embedding-2` embeddings.
+- **xAI Grok**: Optional alternative LLM provider for structured analysis.
 - **Pydantic v2**: Type validation and schema generation.
 - **pytest & httpx**: Automated unit and integration testing.
 
@@ -124,21 +125,34 @@ legal-ai-assistant/ (PW-E/)
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── __init__.py                 # API router aggregator
-│   │   │   ├── documents.py                # POST /api/documents/upload route handler
+│   │   │   ├── documents.py                # Document upload, RAG Q&A, and direct Q&A routes
 │   │   │   └── health.py                   # GET /api/health route handler
+│   │   ├── db/
+│   │   │   └── session.py                  # SQLAlchemy session factory & database availability probe
 │   │   ├── models/
-│   │   │   └── __init__.py                 # Database/Domain models placeholder
+│   │   │   ├── __init__.py                 # Models package export
+│   │   │   └── document.py                 # Document & DocumentChunkModel (pgvector)
 │   │   ├── schemas/
 │   │   │   ├── __init__.py                 # Pydantic schemas package export
+│   │   │   ├── analysis.py                 # LegalAnalysis, LegalFinding, CounselQuestion schemas
 │   │   │   ├── document.py                 # DocumentChunk, DocumentMetadata, Response schemas
-│   │   │   └── health.py                   # Pydantic HealthResponse schema
+│   │   │   ├── health.py                   # Pydantic HealthResponse schema
+│   │   │   └── rag.py                      # RAG Q&A request and response schemas
 │   │   ├── services/
 │   │   │   ├── __init__.py                 # Services export
-│   │   │   └── document_processor.py       # PDF validation, PyMuPDF extraction & chunking
+│   │   │   ├── analyzer.py                 # Grounded legal analyzer & finding hydration
+│   │   │   ├── document_processor.py       # PDF validation, PyMuPDF extraction & chunking
+│   │   │   ├── embeddings/                 # GeminiEmbeddingProvider (gemini-embedding-2, 768d)
+│   │   │   ├── llm/                        # GeminiProvider (default) & GrokProvider (backup)
+│   │   │   ├── rag_service.py              # pgvector indexing, cosine k-NN retrieval & grounded Q&A
+│   │   │   └── workflow_service.py         # DocumentWorkflowService end-to-end orchestrator
 │   │   └── main.py                         # FastAPI application entrypoint & CORS
 │   ├── tests/
 │   │   ├── __init__.py
-│   │   └── test_documents.py               # 16 automated unit & API integration tests
+│   │   ├── test_documents.py               # Document extraction, validation & chunking tests
+│   │   ├── test_integration.py             # E2E workflow, RAG Q&A, and isolation tests
+│   │   ├── test_llm.py                     # Provider switching, structured parsing & hydration tests
+│   │   └── test_rag.py                     # Embedding dimensions, indexing & retrieval tests
 │   ├── pytest.ini                          # Test configuration
 │   ├── requirements.txt                    # Python dependencies
 │   └── venv/                               # Python virtual environment (ignored)
@@ -177,7 +191,9 @@ legal-ai-assistant/ (PW-E/)
    ```
 5. Endpoints:
    - **Health Check**: `GET http://localhost:8000/api/health`
-   - **Document Upload**: `POST http://localhost:8000/api/documents/upload`
+   - **Document Upload & Analysis**: `POST http://localhost:8000/api/documents/upload`
+   - **Grounded RAG Q&A**: `POST http://localhost:8000/api/documents/rag/qa`
+   - **Direct Chunk Q&A Fallback**: `POST http://localhost:8000/api/documents/qa`
    - **Swagger Interactive Docs**: `http://localhost:8000/docs`
 
 ### Running Backend Tests
@@ -228,29 +244,20 @@ python -m pytest tests -v
 
 ---
 
-## 8. Current Phase 2 Scope
+## 8. Integrated MVP Capabilities
 
-Phase 2 introduces real document processing without AI:
-- [x] Dedicated thin route `POST /api/documents/upload` handling `multipart/form-data`.
-- [x] Strict file validation: PDF format only, magic bytes `%PDF` check, 10 MB size ceiling.
-- [x] In-memory PDF processing via PyMuPDF (zero disk/database persistence).
-- [x] Text cleaning: normalization of excess newlines, trailing spaces, and broken hyphenated wraps.
-- [x] Section-aware chunking heuristics for legal headings (`SECTION`, `ARTICLE`, `CLAUSE`, numbered `1. Definitions`), with paragraph fallback.
-- [x] Clean error handling without leaking internal stack traces (400, 413, 415, 422, 500).
-- [x] Interactive React upload component: drag-and-drop, client-side validation, loading indicator, metadata summary, and an expandable chunk inspector with copy button and search filter.
-- [x] 16 automated backend unit and integration tests passing with 100% success rate.
-- [x] Synthetic legal sample PDFs (`sample_nda.pdf`, `sample_services_agreement.pdf`) verified end-to-end.
+The system integrates all core capabilities into an end-to-end user workflow:
+- [x] **PDF Document Ingestion**: PyMuPDF extraction, text cleaning, section detection, and canonical chunking (`chunk-p{page}-{idx:03d}`).
+- [x] **Vector Database & Embeddings**: PostgreSQL + pgvector vector storage with Google Gemini (`gemini-embedding-2`, 768 dimensions) and document-isolated exact cosine k-NN retrieval.
+- [x] **Structured Legal Analysis**: Provider-abstracted legal analysis via Google Gemini (default) or xAI Grok with zero-trust source chunk hydration.
+- [x] **Document-Grounded Q&A**: Real-time semantic question answering with explicit page and section citations and out-of-scope refusal handling.
+- [x] **Full Interactive Workspace**: Attention Radar risk tiers, Clause Source Drawer with verbatim text, Attorney Consultation Prep Sheet with one-click copy, and clean session reset.
+- [x] **Automated Test Suite**: 51 comprehensive backend unit, RAG, provider, and integration tests passing with 100% success rate.
 
 ---
 
-## 9. Future Phases
+## 9. Future Roadmap
 
-- **Phase 3: Embeddings & Retrieval (RAG Foundation)**:
-  - Vector embeddings generation and vector storage.
-  - Semantic search and clause retrieval based on user queries.
-- **Phase 4: GenAI Legal Assistant Core**:
-  - LLM integration with grounded prompt engineering.
-  - Document summaries, clause breakdown, and question answering with verifiable citations.
-- **Phase 5: Actionable Intelligence & Guardrails**:
-  - Automated generation of review checklists and counsel questions.
-  - Hallucination detection, confidence scoring, and strict legal disclaimers.
+- **Multi-Document Comparison**: Side-by-side clause diffing across contract versions or negotiation redlines.
+- **Enterprise Integrations**: Integration with contract lifecycle management (CLM) platforms, cloud storage, and authenticated workspaces.
+- **Advanced Export & Reporting**: PDF and DOCX export for executive summaries and attorney consultation briefings.

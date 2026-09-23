@@ -46,5 +46,5 @@ class DocumentProcessingResponse(BaseModel):
     indexing_status: Optional[str] = Field(None, description="Vector indexing status: 'indexed', 'unavailable', or 'failed'")
 
 
-# Backwards compatibility alias for Phase 2/3 references
+# Backwards compatibility alias
 DocumentUploadResponse = DocumentProcessingResponse

@@ -68,7 +68,7 @@ export const GroundedQAPanel = ({
       }
     }
 
-    // 2. Secondary Phase 5 Pathway: Direct chunk grounding via LLM provider
+    // 2. Direct Chunk Grounding Fallback: In-flight chunk evaluation via LLM provider
     if (rawChunks && rawChunks.length > 0) {
       try {
         const qaRes = await askQuestion(questionText, rawChunks);

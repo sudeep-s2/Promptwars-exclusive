@@ -33,7 +33,7 @@ export const DocumentUpload = () => {
     const isPdfMime = selectedFile.type === 'application/pdf' || selectedFile.type === '';
 
     if (!isPdfExt || !isPdfMime) {
-      setError(`Unsupported file '${selectedFile.name}'. Only PDF documents (.pdf) are supported in Phase 2.`);
+      setError(`Unsupported file '${selectedFile.name}'. Only PDF documents (.pdf) are supported.`);
       setState('error');
       setFile(null);
       return;
@@ -164,7 +164,7 @@ export const DocumentUpload = () => {
             Upload PDF contracts, agreements, or regulatory texts to extract and segment clauses.
           </p>
         </div>
-        <span className="section-badge active">Phase 2 Active</span>
+        <span className="section-badge active">Pipeline Active</span>
       </div>
 
       {/* Error Banner */}
