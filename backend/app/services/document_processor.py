@@ -2,7 +2,12 @@ import re
 import os
 from typing import List, Optional, Tuple
 import pymupdf
-from app.schemas.document import DocumentChunk, DocumentUploadResponse
+from app.schemas.document import (
+    DocumentChunk,
+    DocumentSection,
+    DocumentProcessingResponse,
+    DocumentUploadResponse,
+)
 
 # Constants
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -47,6 +52,11 @@ class FileTooLargeError(DocumentProcessingException):
 
 class CorruptedPDFError(DocumentProcessingException):
     def __init__(self, message: str = "The uploaded PDF file is empty or corrupted and cannot be opened."):
+        super().__init__(message, status_code=400)
+
+
+class EncryptedPDFError(DocumentProcessingException):
+    def __init__(self, message: str = "The uploaded PDF is encrypted or password-protected and cannot be read."):
         super().__init__(message, status_code=400)
 
 
@@ -220,7 +230,30 @@ class DocumentProcessor:
         return chunks, current_title
 
     @classmethod
-    def process_pdf(cls, file_bytes: bytes, filename: str, content_type: Optional[str] = "application/pdf") -> DocumentUploadResponse:
+    def group_chunks_into_sections(cls, chunks: List[DocumentChunk]) -> List[DocumentSection]:
+        """
+        Group sequential chunks sharing the same section title into DocumentSection instances.
+        Provides a structured legal hierarchy: Document -> Sections -> Chunks.
+        """
+        sections: List[DocumentSection] = []
+        current_section: Optional[DocumentSection] = None
+
+        for chunk in chunks:
+            title = chunk.section_title or "General Provisions & Preamble"
+            if current_section is None or current_section.section_title != title:
+                current_section = DocumentSection(
+                    section_title=title,
+                    page_number=chunk.page_number,
+                    chunks=[chunk],
+                )
+                sections.append(current_section)
+            else:
+                current_section.chunks.append(chunk)
+
+        return sections
+
+    @classmethod
+    def process_pdf(cls, file_bytes: bytes, filename: str, content_type: Optional[str] = "application/pdf") -> DocumentProcessingResponse:
         """
         Validate, extract text page-by-page, detect sections, and produce structured chunks.
         """
@@ -232,6 +265,9 @@ class DocumentProcessor:
             raise CorruptedPDFError(f"Failed to open PDF document: {str(exc)}") from exc
 
         try:
+            if doc.is_encrypted:
+                raise EncryptedPDFError()
+
             page_count = len(doc)
             if page_count == 0:
                 raise CorruptedPDFError("PDF contains 0 pages.")
@@ -253,16 +289,21 @@ class DocumentProcessor:
             if total_text_length == 0 or len(total_chunks) == 0:
                 raise NoExtractableTextError()
 
+            # Group chunks into structured sections
+            sections = cls.group_chunks_into_sections(total_chunks)
+
             # Sanitize filename (prevent directory traversal artifacts)
             clean_filename = os.path.basename(filename)
 
-            return DocumentUploadResponse(
+            return DocumentProcessingResponse(
                 filename=clean_filename,
                 file_type="application/pdf",
                 file_size=len(file_bytes),
                 page_count=page_count,
                 text_length=total_text_length,
+                section_count=len(sections),
                 chunk_count=len(total_chunks),
+                sections=sections,
                 chunks=total_chunks,
             )
         finally:

@@ -1,4 +1,5 @@
 import io
+import os
 import pytest
 import pymupdf
 from fastapi.testclient import TestClient
@@ -8,6 +9,7 @@ from app.services.document_processor import (
     UnsupportedFileTypeError,
     FileTooLargeError,
     CorruptedPDFError,
+    EncryptedPDFError,
     NoExtractableTextError,
 )
 
@@ -22,6 +24,20 @@ def create_in_memory_pdf(pages_text: list[str]) -> bytes:
         if text:
             page.insert_text((50, 72), text)
     pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+def create_encrypted_pdf() -> bytes:
+    """Helper to generate an encrypted in-memory PDF."""
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.insert_text((50, 72), "1. Confidential Secret Information")
+    pdf_bytes = doc.tobytes(
+        encryption=pymupdf.PDF_ENCRYPT_AES_256,
+        user_pw="userpass",
+        owner_pw="ownerpass",
+    )
     doc.close()
     return pdf_bytes
 
@@ -85,6 +101,13 @@ def test_pdf_with_no_extractable_text():
         DocumentProcessor.process_pdf(blank_pdf, "blank.pdf")
 
 
+def test_encrypted_pdf_rejection():
+    enc_pdf = create_encrypted_pdf()
+    with pytest.raises(EncryptedPDFError) as exc:
+        DocumentProcessor.process_pdf(enc_pdf, "encrypted.pdf")
+    assert "encrypted or password-protected" in str(exc.value)
+
+
 def test_multi_page_pdf_processing():
     p1 = "1. Definitions\nAffiliate means any entity controlling or controlled by a party."
     p2 = "2. Confidentiality\nEach party shall protect Proprietary Information with reasonable care."
@@ -93,6 +116,7 @@ def test_multi_page_pdf_processing():
     result = DocumentProcessor.process_pdf(pdf_bytes, "nda_sample.pdf")
     assert result.page_count == 2
     assert result.chunk_count >= 2
+    assert result.section_count == 2
     assert result.filename == "nda_sample.pdf"
     assert result.chunks[0].page_number == 1
     assert result.chunks[0].chunk_id == "chunk-p1-001"
@@ -100,6 +124,23 @@ def test_multi_page_pdf_processing():
     assert result.chunks[1].page_number == 2
     assert result.chunks[1].chunk_id == "chunk-p2-001"
     assert "Confidentiality" in (result.chunks[1].section_title or "")
+
+
+def test_section_hierarchy_and_grouping():
+    p1 = (
+        "1. Definitions\nAffiliate means an entity.\n"
+        "2. Payment Terms\nInvoices are due net 30.\nLate fees accrue at 1.5%."
+    )
+    pdf_bytes = create_in_memory_pdf([p1])
+    result = DocumentProcessor.process_pdf(pdf_bytes, "contract.pdf")
+
+    assert len(result.sections) == 2
+    assert result.section_count == 2
+    assert result.sections[0].section_title == "1. Definitions"
+    assert result.sections[0].page_number == 1
+    assert len(result.sections[0].chunks) >= 1
+    assert result.sections[1].section_title == "2. Payment Terms"
+    assert len(result.sections[1].chunks) >= 1
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +167,9 @@ def test_api_upload_valid_pdf():
     assert data["filename"] == "contract.pdf"
     assert data["file_type"] == "application/pdf"
     assert data["page_count"] == 1
+    assert data["section_count"] >= 2
     assert data["chunk_count"] >= 2
+    assert len(data["sections"]) == data["section_count"]
     assert len(data["chunks"]) == data["chunk_count"]
 
     first_chunk = data["chunks"][0]
@@ -134,6 +177,16 @@ def test_api_upload_valid_pdf():
     assert first_chunk["page_number"] == 1
     assert first_chunk["char_count"] > 0
     assert "text" in first_chunk
+
+
+def test_api_upload_encrypted_pdf():
+    enc_pdf = create_encrypted_pdf()
+    response = client.post(
+        "/api/documents/upload",
+        files={"file": ("secret.pdf", io.BytesIO(enc_pdf), "application/pdf")},
+    )
+    assert response.status_code == 400
+    assert "encrypted or password-protected" in response.json()["detail"]
 
 
 def test_api_upload_unsupported_file_extension():
@@ -190,3 +243,24 @@ def test_api_upload_oversized_file():
     )
     assert response.status_code == 413
     assert "exceeds maximum 10 MB limit" in response.json()["detail"]
+
+
+def test_real_sample_services_agreement_upload():
+    sample_path = os.path.join(os.path.dirname(__file__), "..", "..", "sample_documents", "sample_services_agreement.pdf")
+    if not os.path.exists(sample_path):
+        pytest.skip("sample_services_agreement.pdf not found in sample_documents")
+
+    with open(sample_path, "rb") as f:
+        file_bytes = f.read()
+
+    response = client.post(
+        "/api/documents/upload",
+        files={"file": ("sample_services_agreement.pdf", io.BytesIO(file_bytes), "application/pdf")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["filename"] == "sample_services_agreement.pdf"
+    assert data["page_count"] == 3
+    assert data["section_count"] >= 5
+    assert data["chunk_count"] >= 5
+    assert len(data["sections"]) == data["section_count"]

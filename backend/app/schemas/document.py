@@ -11,6 +11,13 @@ class DocumentChunk(BaseModel):
     char_count: int = Field(..., description="Character count of the chunk text", examples=[482])
 
 
+class DocumentSection(BaseModel):
+    """Schema representing a detected legal section containing one or more chunks."""
+    section_title: str = Field(..., description="Detected heading or section title", examples=["4. Termination"])
+    page_number: int = Field(..., description="1-indexed page number where section begins", examples=[3])
+    chunks: List[DocumentChunk] = Field(default_factory=list, description="Ordered chunks belonging to this section")
+
+
 class DocumentMetadata(BaseModel):
     """Metadata summary of the processed document."""
     filename: str = Field(..., description="Sanitized original filename", examples=["contract.pdf"])
@@ -18,15 +25,22 @@ class DocumentMetadata(BaseModel):
     file_size: int = Field(..., description="Size in bytes", examples=[104857])
     page_count: int = Field(..., description="Total pages in the PDF", examples=[3])
     text_length: int = Field(..., description="Total extracted text length in characters", examples=[4210])
+    section_count: int = Field(..., description="Total number of detected sections", examples=[4])
     chunk_count: int = Field(..., description="Total number of chunks produced", examples=[8])
 
 
-class DocumentUploadResponse(BaseModel):
+class DocumentProcessingResponse(BaseModel):
     """Response payload returned upon successful document upload and chunking."""
     filename: str = Field(..., description="Sanitized original filename", examples=["contract.pdf"])
     file_type: str = Field(..., description="MIME type of the file", examples=["application/pdf"])
     file_size: int = Field(..., description="Size in bytes", examples=[104857])
     page_count: int = Field(..., description="Total pages in the PDF", examples=[3])
     text_length: int = Field(..., description="Total extracted text length in characters", examples=[4210])
+    section_count: int = Field(..., description="Total number of detected sections", examples=[4])
     chunk_count: int = Field(..., description="Total number of chunks produced", examples=[8])
-    chunks: List[DocumentChunk] = Field(..., description="Ordered list of section-aware document chunks")
+    sections: List[DocumentSection] = Field(default_factory=list, description="Detected document sections with contained chunks")
+    chunks: List[DocumentChunk] = Field(default_factory=list, description="Flat ordered list of section-aware document chunks")
+
+
+# Backwards compatibility alias for Phase 2/3 references
+DocumentUploadResponse = DocumentProcessingResponse

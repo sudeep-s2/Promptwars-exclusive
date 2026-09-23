@@ -1,5 +1,5 @@
 import type { HealthResponse } from '../types/health';
-import type { DocumentUploadResponse } from '../types/document';
+import type { DocumentProcessingResponse } from '../types/document';
 
 const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -26,7 +26,7 @@ export async function getHealthStatus(): Promise<HealthResponse> {
  * Upload a PDF document for validation, text extraction, and section-aware chunking.
  * Uses native FormData without setting Content-Type so boundary is set automatically.
  */
-export async function uploadDocument(file: File): Promise<DocumentUploadResponse> {
+export async function uploadDocument(file: File): Promise<DocumentProcessingResponse> {
   const formData = new FormData();
   formData.append('file', file);
 
@@ -53,7 +53,7 @@ export async function uploadDocument(file: File): Promise<DocumentUploadResponse
     throw new Error(errorMessage);
   }
 
-  const data: DocumentUploadResponse = await response.json();
+  const data: DocumentProcessingResponse = await response.json();
   return data;
 }
 

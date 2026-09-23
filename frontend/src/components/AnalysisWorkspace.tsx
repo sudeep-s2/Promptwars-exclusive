@@ -37,12 +37,26 @@ export const AnalysisWorkspace = ({ document, onReset }: AnalysisWorkspaceProps)
       {/* 1. Document Header & Metadata Bar */}
       <DocumentHeaderBar
         metadata={document.metadata}
+        isRealDocument={document.is_real_document}
         onReset={onReset}
         onOpenPrepSheet={() => setIsPrepModalOpen(true)}
       />
 
+      {/* Provenance Banner for Uploaded Documents */}
+      {document.is_real_document && (
+        <div className="provenance-banner" role="status">
+          <span className="provenance-icon">⚡</span>
+          <div className="provenance-content">
+            <strong>Live Ingested PDF:</strong> File size, {document.metadata.page_count} page(s), {document.metadata.section_count} detected legal section(s), {document.metadata.chunk_count} chunk(s), and all verbatim excerpts below are extracted directly from your PDF via PyMuPDF. Risk attention ratings and plain-language summaries are preliminary heuristics pending Phase 5 Gemini integration.
+          </div>
+        </div>
+      )}
+
       {/* 2. Executive Summary */}
-      <ExecutiveSummaryCard summary={document.executive_summary} />
+      <ExecutiveSummaryCard
+        summary={document.executive_summary}
+        isRealDocument={document.is_real_document}
+      />
 
       {/* 3. Attention Radar Filter */}
       <AttentionRadarFilter

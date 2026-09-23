@@ -1,6 +1,6 @@
 import logging
 from fastapi import APIRouter, File, UploadFile, HTTPException, status
-from app.schemas.document import DocumentUploadResponse
+from app.schemas.document import DocumentProcessingResponse
 from app.services.document_processor import (
     DocumentProcessor,
     DocumentProcessingException,
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/documents", tags=["Documents"])
 
 @router.post(
     "/upload",
-    response_model=DocumentUploadResponse,
+    response_model=DocumentProcessingResponse,
     summary="Upload and Process Legal PDF",
     description="Uploads a PDF legal document (up to 10 MB), validates, extracts text page-by-page, and segments into section-aware chunks.",
     responses={

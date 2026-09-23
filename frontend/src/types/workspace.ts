@@ -1,3 +1,5 @@
+import type { DocumentSection, DocumentChunk } from './document';
+
 export type AttentionLevel = 'high' | 'moderate' | 'standard';
 
 export type ClauseCategory =
@@ -20,6 +22,7 @@ export interface ClauseFinding {
   page_number: number;
   section_title: string;
   verbatim_excerpt: string;
+  is_real_extracted?: boolean;
 }
 
 export interface DocumentMetadataSummary {
@@ -34,6 +37,8 @@ export interface DocumentMetadataSummary {
   financial_summary: string;
   file_size_formatted: string;
   page_count: number;
+  section_count?: number;
+  chunk_count?: number;
 }
 
 export interface QAPair {
@@ -53,6 +58,7 @@ export interface CounselPrepPoint {
 export interface MockLegalDocument {
   id: string;
   filename: string;
+  is_real_document?: boolean;
   metadata: DocumentMetadataSummary;
   executive_summary: string;
   clauses: ClauseFinding[];
@@ -63,6 +69,10 @@ export interface MockLegalDocument {
     generated_date: string;
     discussion_points: CounselPrepPoint[];
   };
+  sections?: DocumentSection[];
+  raw_chunks?: DocumentChunk[];
 }
+
+export type WorkspaceDocument = MockLegalDocument;
 
 export type WorkspaceView = 'landing' | 'processing' | 'workspace';

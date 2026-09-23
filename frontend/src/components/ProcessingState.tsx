@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 
 interface ProcessingStateProps {
   documentName: string;
-  onComplete: () => void;
+  isRealUpload?: boolean;
+  onComplete?: () => void;
 }
 
-const STAGES = [
+const SAMPLE_STAGES = [
   'Reading document structure...',
   'Extracting page text and numbering...',
   'Detecting legal sections and clauses...',
@@ -13,50 +14,66 @@ const STAGES = [
   'Preparing plain-language analysis...',
 ];
 
-export const ProcessingState = ({ documentName, onComplete }: ProcessingStateProps) => {
+const REAL_STAGES = [
+  'Uploading PDF to FastAPI service...',
+  'Validating document format and magic bytes...',
+  'Extracting page text and layout via PyMuPDF...',
+  'Detecting legal sections and chunking...',
+  'Assembling structured document workspace...',
+];
+
+export const ProcessingState = ({
+  documentName,
+  isRealUpload = false,
+  onComplete,
+}: ProcessingStateProps) => {
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
+  const stages = isRealUpload ? REAL_STAGES : SAMPLE_STAGES;
 
   useEffect(() => {
-    const stageDuration = 350; // 350ms per stage -> total ~1.75s
-    const timer = setInterval(() => {
-      setCurrentStageIndex((prev) => {
-        if (prev < STAGES.length - 1) {
-          return prev + 1;
-        } else {
-          clearInterval(timer);
-          setTimeout(onComplete, 300);
-          return prev;
-        }
-      });
-    }, stageDuration);
+    // For sample documents, automatically cycle through stages and trigger onComplete
+    if (!isRealUpload && onComplete) {
+      const stageDuration = 350;
+      const timer = setInterval(() => {
+        setCurrentStageIndex((prev) => {
+          if (prev < SAMPLE_STAGES.length - 1) {
+            return prev + 1;
+          } else {
+            clearInterval(timer);
+            setTimeout(onComplete, 300);
+            return prev;
+          }
+        });
+      }, stageDuration);
 
-    return () => clearInterval(timer);
-  }, [onComplete]);
-
-  const progressPercentage = Math.round(((currentStageIndex + 1) / STAGES.length) * 100);
+      return () => clearInterval(timer);
+    } else {
+      // For real uploads, cycle stages gently to show real progress while waiting for API
+      const interval = setInterval(() => {
+        setCurrentStageIndex((prev) => (prev < REAL_STAGES.length - 2 ? prev + 1 : prev));
+      }, 400);
+      return () => clearInterval(interval);
+    }
+  }, [isRealUpload, onComplete]);
 
   return (
     <div className="processing-container" role="status" aria-live="polite">
       <div className="processing-card">
         <div className="processing-icon-pulse">⚖️</div>
 
-        <h2 className="processing-title">Analyzing Legal Document</h2>
+        <h2 className="processing-title">
+          {isRealUpload ? 'Processing Uploaded Legal PDF' : 'Analyzing Legal Document'}
+        </h2>
         <p className="processing-docname">{documentName}</p>
 
-        <div className="processing-bar-wrapper">
-          <div
-            className="processing-bar-fill"
-            style={{ width: `${progressPercentage}%` }}
-          />
-        </div>
-
-        <div className="processing-stage-indicator">
-          <span className="stage-text">{STAGES[currentStageIndex]}</span>
-          <span className="stage-percent">{progressPercentage}%</span>
+        <div className="processing-stage-indicator" style={{ justifyContent: 'center', margin: '16px 0 8px 0' }}>
+          <span className="stage-text" style={{ fontSize: '15px', color: 'var(--brand-primary, #1e3a8a)', fontWeight: 600 }}>
+            {stages[currentStageIndex]}
+          </span>
         </div>
 
         <div className="processing-checklist">
-          {STAGES.map((stage, idx) => (
+          {stages.map((stage, idx) => (
             <div
               key={stage}
               className={`stage-item ${
@@ -76,7 +93,9 @@ export const ProcessingState = ({ documentName, onComplete }: ProcessingStatePro
         </div>
 
         <p className="processing-disclaimer">
-          Visual prototype simulation using structured document models. In-flight memory processing.
+          {isRealUpload
+            ? 'Live extraction using PyMuPDF and deterministic section-aware chunking.'
+            : 'Visual prototype simulation using structured document models. In-flight memory processing.'}
         </p>
       </div>
     </div>

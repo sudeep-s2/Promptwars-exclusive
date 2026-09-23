@@ -32,7 +32,14 @@ export const ClauseSourceDrawer = ({
       <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-header">
           <div>
-            <span className="drawer-category">{clause.category}</span>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span className="drawer-category">{clause.category}</span>
+              {clause.is_real_extracted && (
+                <span style={{ fontSize: '11px', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                  Live Extraction
+                </span>
+              )}
+            </div>
             <h3 id="drawer-title" className="drawer-title">{clause.title}</h3>
           </div>
           <button className="btn-close-drawer" onClick={onClose} aria-label="Close Drawer">
@@ -44,7 +51,11 @@ export const ClauseSourceDrawer = ({
           {/* TIER 1 & 2: AI Interpretation & Plain-Language Explanation */}
           <div className="drawer-tier tier-interpretation">
             <div className="tier-header">
-              <span className="tier-badge ai-badge">✦ LexLens Plain-Language Translation</span>
+              <span className="tier-badge ai-badge">
+                {clause.is_real_extracted
+                  ? '✦ Plain-Language Overview [Prototype Preview]'
+                  : '✦ LexLens Plain-Language Translation'}
+              </span>
               <span className={`drawer-attention-tag tag-${clause.attention_level}`}>
                 {clause.attention_level === 'high'
                   ? '🔴 High Attention'
@@ -64,7 +75,11 @@ export const ClauseSourceDrawer = ({
           {/* TIER 3: Verbatim Immutable Document Source */}
           <div className="drawer-tier tier-verbatim">
             <div className="tier-header">
-              <span className="tier-badge source-badge">📄 Original Immutable Legal Text</span>
+              <span className="tier-badge source-badge">
+                {clause.is_real_extracted
+                  ? '📄 Original Immutable Text [PyMuPDF Live Extracted]'
+                  : '📄 Original Immutable Legal Text'}
+              </span>
               <span className="tier-citation">
                 Page {clause.page_number} · {clause.section_title}
               </span>

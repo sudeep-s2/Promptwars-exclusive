@@ -5,16 +5,43 @@ import { BackendStatusCard } from '../components/BackendStatusCard';
 import { DocumentUploadArea } from '../components/DocumentUploadArea';
 import { ProcessingState } from '../components/ProcessingState';
 import { AnalysisWorkspace } from '../components/AnalysisWorkspace';
-import type { MockLegalDocument, WorkspaceView } from '../types/workspace';
+import type { WorkspaceDocument, WorkspaceView } from '../types/workspace';
 import { SAMPLE_SERVICES_AGREEMENT } from '../data/mockDocuments';
+import { uploadDocument } from '../services/api';
+import { convertRealResponseToWorkspaceDoc } from '../utils/documentConverter';
 
 export const Dashboard = () => {
   const [view, setView] = useState<WorkspaceView>('landing');
-  const [selectedDoc, setSelectedDoc] = useState<MockLegalDocument>(SAMPLE_SERVICES_AGREEMENT);
+  const [selectedDoc, setSelectedDoc] = useState<WorkspaceDocument>(SAMPLE_SERVICES_AGREEMENT);
+  const [isRealUpload, setIsRealUpload] = useState(false);
+  const [uploadFilename, setUploadFilename] = useState('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const handleSelectDocument = (doc: MockLegalDocument) => {
+  // 1. Mock Sample Document Flow (Instant visual testing)
+  const handleSelectSample = (doc: WorkspaceDocument) => {
+    setIsRealUpload(false);
     setSelectedDoc(doc);
+    setUploadError(null);
     setView('processing');
+  };
+
+  // 2. Real Upload Ingestion Flow (FastAPI + PyMuPDF extraction)
+  const handleUploadRealFile = async (file: File) => {
+    setIsRealUpload(true);
+    setUploadFilename(file.name);
+    setUploadError(null);
+    setView('processing');
+
+    try {
+      const response = await uploadDocument(file);
+      const workspaceDoc = convertRealResponseToWorkspaceDoc(response);
+      setSelectedDoc(workspaceDoc);
+      setView('workspace');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to process document.';
+      setUploadError(message);
+      setView('landing');
+    }
   };
 
   const handleProcessingComplete = () => {
@@ -22,6 +49,7 @@ export const Dashboard = () => {
   };
 
   const handleResetToLanding = () => {
+    setUploadError(null);
     setView('landing');
   };
 
@@ -72,15 +100,20 @@ export const Dashboard = () => {
             <BackendStatusCard />
 
             {/* Document Upload Area & Sample Documents */}
-            <DocumentUploadArea onSelectDocument={handleSelectDocument} />
+            <DocumentUploadArea
+              onSelectSample={handleSelectSample}
+              onUploadFile={handleUploadRealFile}
+              externalError={uploadError}
+            />
           </>
         )}
 
-        {/* VIEW 2: SIMULATED IN-MEMORY PROCESSING */}
+        {/* VIEW 2: PROCESSING (Real API Call or Sample Animation) */}
         {view === 'processing' && (
           <ProcessingState
-            documentName={selectedDoc.filename}
-            onComplete={handleProcessingComplete}
+            documentName={isRealUpload ? uploadFilename : selectedDoc.filename}
+            isRealUpload={isRealUpload}
+            onComplete={isRealUpload ? undefined : handleProcessingComplete}
           />
         )}
 
@@ -94,7 +127,7 @@ export const Dashboard = () => {
       </main>
 
       <footer className="dashboard-footer">
-        <p>LexLens • PromptWars Exclusive Edition — Phase 3: Visual MVP Document Workspace</p>
+        <p>LexLens • PromptWars Exclusive Edition — Phase 4: Real PDF Processing &amp; Document Pipeline</p>
       </footer>
     </div>
   );
