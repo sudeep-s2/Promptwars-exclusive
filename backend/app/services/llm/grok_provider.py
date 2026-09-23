@@ -133,8 +133,13 @@ class GrokProvider(LLMProvider):
         ])
 
         system_prompt = (
-            "You are LexLens Grounded Legal Q&A. Answer strictly based on the provided document text. "
-            "Output JSON with keys: answer, source_chunk_id."
+            "You are LexLens Grounded Legal Q&A. Answer strictly based on the provided document text in 2-4 sentences. "
+            "Output JSON with keys: answer, source_chunk_id. "
+            "RULES: "
+            "1. Ground strictly in provided chunks. "
+            "2. If information or a specific fee/penalty is missing, state the document does not contain it and set source_chunk_id to null. "
+            "3. NO LEGAL ADVICE: Never advise whether to sign or sue, and never declare enforceability; advise attorney review. "
+            "4. If terms conflict, explicitly describe both provisions without deciding which controls."
         )
 
         headers = {

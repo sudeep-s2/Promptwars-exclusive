@@ -255,36 +255,8 @@ class RAGService:
                 confidence_score=top_similarity,
             )
 
-        # 3. Assemble Grounded Prompt Context
-        context_blocks = []
-        chunk_lookup = {}
-        for chunk_model, score in retrieved:
-            chunk_lookup[chunk_model.chunk_id] = (chunk_model, score)
-            context_blocks.append(
-                f"[CHUNK_ID: {chunk_model.chunk_id} | PAGE: {chunk_model.page_number} | SECTION: {chunk_model.section_title}]\n"
-                f"{chunk_model.text}"
-            )
-
-        context_str = "\n\n---\n\n".join(context_blocks)
-
-        prompt = (
-            "You are an objective legal document analysis assistant answering questions about a user's uploaded agreement.\n\n"
-            "STRICT GROUNDING RULES:\n"
-            "1. Answer ONLY using the facts explicitly stated in the Provided Context below.\n"
-            "2. If the context does not contain enough information to answer the question, state: "
-            f"'{INSUFFICIENT_CONTEXT_MESSAGE}' and set 'is_sufficient' to false.\n"
-            "3. Do NOT invent terms, infer unwritten business intent, or use outside legal knowledge.\n"
-            "4. For every substantive claim made in your answer, identify the exact source_chunk_id that directly supports it.\n"
-            "5. Do NOT output verbatim quotes in your citation fields; cite only the source_chunk_id.\n\n"
-            f"USER QUESTION: {cleaned_question}\n\n"
-            f"PROVIDED CONTEXT:\n{context_str}\n\n"
-            "OUTPUT FORMAT: Return a valid JSON object matching this schema:\n"
-            "{\n"
-            '  "answer": "Plain-language, factual answer or refusal message",\n'
-            '  "source_chunk_ids": ["chunk-id-1", ...],\n'
-            '  "is_sufficient": true\n'
-            "}"
-        )
+        # 3. Assemble Grounded Context and Retrieve Supporting Models
+        chunk_lookup = {chunk_model.chunk_id: (chunk_model, score) for chunk_model, score in retrieved}
 
         try:
             # Convert retrieved models to DocumentChunk objects for LLM provider
