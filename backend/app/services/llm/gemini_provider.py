@@ -15,6 +15,8 @@ FALLBACK_GEMINI_FLASH_MODEL = "gemini-1.5-flash"
 class GeminiProvider(LLMProvider):
     """Google Gemini LLM provider implementing structured legal analysis."""
 
+    _cached_model_name: Optional[str] = None
+
     def __init__(self, api_key: Optional[str] = None):
         self._api_key = api_key or os.getenv("GEMINI_API_KEY", "").strip()
         self._client = None
@@ -43,9 +45,13 @@ class GeminiProvider(LLMProvider):
     def get_model_name(self) -> str:
         """
         Select an appropriate Flash-class model.
-        Uses safe model discovery with fallback to default constants.
+        Uses cached model name or safe model discovery with fallback to default constants.
         """
         if self._selected_model:
+            return self._selected_model
+
+        if GeminiProvider._cached_model_name:
+            self._selected_model = GeminiProvider._cached_model_name
             return self._selected_model
 
         client = self._get_client()
@@ -69,6 +75,7 @@ class GeminiProvider(LLMProvider):
             logger.info("Model listing not accessible, using default model %s (%s)", DEFAULT_GEMINI_FLASH_MODEL, str(exc))
             self._selected_model = DEFAULT_GEMINI_FLASH_MODEL
 
+        GeminiProvider._cached_model_name = self._selected_model
         return self._selected_model
 
     def analyze_document(

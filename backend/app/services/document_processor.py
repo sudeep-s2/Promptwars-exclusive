@@ -169,6 +169,19 @@ class DocumentProcessor:
             if not block_text:
                 return
 
+            def append_chunk(chunk_content: str) -> None:
+                nonlocal chunk_idx
+                chunks.append(
+                    DocumentChunk(
+                        chunk_id=f"chunk-p{page_num}-{chunk_idx:03d}",
+                        page_number=page_num,
+                        section_title=title,
+                        text=chunk_content,
+                        char_count=len(chunk_content),
+                    )
+                )
+                chunk_idx += 1
+
             # If block is larger than TARGET_CHUNK_MAX_CHARS, split into paragraph sub-chunks
             if len(block_text) > TARGET_CHUNK_MAX_CHARS:
                 paragraphs = block_text.split("\n\n")
@@ -181,16 +194,7 @@ class DocumentProcessor:
                         continue
                     if sub_len + len(p) > TARGET_CHUNK_MAX_CHARS and sub_buf:
                         sub_text = "\n\n".join(sub_buf).strip()
-                        chunks.append(
-                            DocumentChunk(
-                                chunk_id=f"chunk-p{page_num}-{chunk_idx:03d}",
-                                page_number=page_num,
-                                section_title=title,
-                                text=sub_text,
-                                char_count=len(sub_text),
-                            )
-                        )
-                        chunk_idx += 1
+                        append_chunk(sub_text)
                         sub_buf = [p]
                         sub_len = len(p)
                     else:
@@ -199,27 +203,9 @@ class DocumentProcessor:
 
                 if sub_buf:
                     sub_text = "\n\n".join(sub_buf).strip()
-                    chunks.append(
-                        DocumentChunk(
-                            chunk_id=f"chunk-p{page_num}-{chunk_idx:03d}",
-                            page_number=page_num,
-                            section_title=title,
-                            text=sub_text,
-                            char_count=len(sub_text),
-                        )
-                    )
-                    chunk_idx += 1
+                    append_chunk(sub_text)
             else:
-                chunks.append(
-                    DocumentChunk(
-                        chunk_id=f"chunk-p{page_num}-{chunk_idx:03d}",
-                        page_number=page_num,
-                        section_title=title,
-                        text=block_text,
-                        char_count=len(block_text),
-                    )
-                )
-                chunk_idx += 1
+                append_chunk(block_text)
 
         for line in lines:
             heading = cls.detect_heading(line)

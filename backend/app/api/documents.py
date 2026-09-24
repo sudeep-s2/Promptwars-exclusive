@@ -1,5 +1,6 @@
 import uuid
 import re
+import asyncio
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, File, UploadFile, Query, Path, HTTPException, Depends, status
@@ -76,7 +77,8 @@ async def upload_document(
         file_bytes = await file.read()
 
         workflow = DocumentWorkflowService()
-        result = workflow.process_and_index_document(
+        result = await asyncio.to_thread(
+            workflow.process_and_index_document,
             file_bytes=file_bytes,
             filename=file.filename or "uploaded.pdf",
             content_type=file.content_type,
@@ -160,7 +162,8 @@ async def ask_document_question(
     """
     try:
         rag_service = RAGService()
-        response = rag_service.answer_question(
+        response = await asyncio.to_thread(
+            rag_service.answer_question,
             document_id=document_id,
             question=body.question,
             db=db,
@@ -215,7 +218,11 @@ async def grounded_qa(body: QABody):
     """Execute grounded question-answering with active LLM provider directly on provided chunks."""
     try:
         analyzer = LegalAnalyzer()
-        response = analyzer.answer_question(question=body.question, chunks=body.chunks)
+        response = await asyncio.to_thread(
+            analyzer.answer_question,
+            question=body.question,
+            chunks=body.chunks,
+        )
         return response
     except ConfigurationError as ce:
         raise HTTPException(

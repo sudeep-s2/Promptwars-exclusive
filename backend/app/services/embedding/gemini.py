@@ -78,11 +78,16 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         if not texts:
             return []
 
-        results: List[List[float]] = []
+        # Validate inputs upfront
         for i, text in enumerate(texts):
             if not text or not text.strip():
                 raise EmbeddingError(f"Cannot generate embedding for empty text at index {i}.")
-            vector = self.embed_text(text)
-            results.append(vector)
 
-        return results
+        if len(texts) == 1:
+            return [self.embed_text(texts[0])]
+
+        import concurrent.futures
+
+        max_workers = min(len(texts), 8)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            return list(executor.map(self.embed_text, texts))

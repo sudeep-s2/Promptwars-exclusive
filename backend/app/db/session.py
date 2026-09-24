@@ -1,6 +1,9 @@
 import os
+import time
+import socket
 import logging
 from typing import Generator
+from urllib.parse import urlparse
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
@@ -25,12 +28,6 @@ class DatabaseUnavailableError(Exception):
 
 _engine = None
 _session_factory = None
-
-
-import time
-import socket
-from urllib.parse import urlparse
-
 _db_avail_cache = {"result": False, "checked_at": 0.0}
 
 

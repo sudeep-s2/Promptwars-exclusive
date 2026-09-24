@@ -23,6 +23,22 @@ export async function getHealthStatus(): Promise<HealthResponse> {
 }
 
 /**
+ * Helper to parse backend error responses cleanly.
+ */
+async function parseErrorDetail(response: Response, defaultPrefix: string): Promise<string> {
+  let errorMessage = `${defaultPrefix} (${response.status} ${response.statusText})`;
+  try {
+    const errorJson = await response.json();
+    if (errorJson && typeof errorJson.detail === 'string') {
+      errorMessage = errorJson.detail;
+    }
+  } catch {
+    // Fallback if JSON parsing fails
+  }
+  return errorMessage;
+}
+
+/**
  * Upload a PDF document for validation, text extraction, and section-aware chunking.
  * Optionally runs structured legal analysis with the configured LLM provider.
  * Uses native FormData without setting Content-Type so boundary is set automatically.
@@ -45,16 +61,7 @@ export async function uploadDocument(
   });
 
   if (!response.ok) {
-    let errorMessage = `Upload failed (${response.status} ${response.statusText})`;
-    try {
-      const errorJson = await response.json();
-      if (errorJson && typeof errorJson.detail === 'string') {
-        errorMessage = errorJson.detail;
-      }
-    } catch {
-      // Fallback
-    }
-    throw new Error(errorMessage);
+    throw new Error(await parseErrorDetail(response, 'Upload failed'));
   }
 
   const data: DocumentProcessingResponse = await response.json();
@@ -78,16 +85,7 @@ export async function askQuestion(
   });
 
   if (!response.ok) {
-    let errorMessage = `Q&A query failed (${response.status} ${response.statusText})`;
-    try {
-      const errorJson = await response.json();
-      if (errorJson && typeof errorJson.detail === 'string') {
-        errorMessage = errorJson.detail;
-      }
-    } catch {
-      // Fallback
-    }
-    throw new Error(errorMessage);
+    throw new Error(await parseErrorDetail(response, 'Q&A query failed'));
   }
 
   const data: QAResponse = await response.json();
@@ -111,16 +109,7 @@ export async function askDocumentQuestion(
   });
 
   if (!response.ok) {
-    let errorMessage = `RAG Q&A query failed (${response.status} ${response.statusText})`;
-    try {
-      const errorJson = await response.json();
-      if (errorJson && typeof errorJson.detail === 'string') {
-        errorMessage = errorJson.detail;
-      }
-    } catch {
-      // Fallback
-    }
-    throw new Error(errorMessage);
+    throw new Error(await parseErrorDetail(response, 'RAG Q&A query failed'));
   }
 
   const data: GroundedAnswerResponse = await response.json();
