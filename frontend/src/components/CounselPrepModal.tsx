@@ -23,14 +23,13 @@ export const CounselPrepModal = ({
   const handleCopy = async () => {
     const text = [
       `============================================================`,
-      `ATTORNEY CONSULTATION PREPARATION SHEET`,
-      `LexLens Automated Legal Information Navigator`,
-      `============================================================`,
+      `QUESTIONS TO DISCUSS WITH LEGAL COUNSEL`,
       `Document: ${documentTitle}`,
-      `Generated: ${generatedDate}`,
-      `Notice: For informational consultation preparation only. Not legal advice.`,
+      `Date: ${generatedDate}`,
+      `Notice: For consultation preparation only. Does not constitute legal advice.`,
+      `============================================================`,
       ``,
-      `TARGETED QUESTIONS TO DISCUSS WITH YOUR ATTORNEY:`,
+      `PRIORITIZED DISCUSSION POINTS:`,
       `------------------------------------------------------------`,
       ...discussionPoints.map(
         (item, idx) =>
@@ -48,7 +47,6 @@ export const CounselPrepModal = ({
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2200);
     } catch {
-      // Fallback for non-secure or restricted clipboard contexts
       try {
         const textarea = document.createElement('textarea');
         textarea.value = text;
@@ -67,17 +65,29 @@ export const CounselPrepModal = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-group">
-            <span className="modal-badge">Professional Consultation Tool</span>
-            <h2 id="modal-title" className="modal-title">Attorney Consultation Prep Sheet</h2>
+            <h2 id="modal-title" className="modal-title">
+              Questions to discuss with legal counsel
+            </h2>
             <p className="modal-subtitle">
-              Take these prioritized questions to your legal counsel to turn a costly 5-hour review into an efficient, high-leverage 20-minute consultation.
+              Prioritized discussion topics formulated from this document to help make your attorney consultation focused and efficient.
             </p>
           </div>
-          <button className="btn-close-modal" onClick={onClose} aria-label="Close Dialog">
+          <button
+            type="button"
+            className="btn-close-modal"
+            onClick={onClose}
+            aria-label="Close dialog"
+          >
             ✕
           </button>
         </div>
@@ -85,12 +95,15 @@ export const CounselPrepModal = ({
         <div className="modal-meta-bar">
           <span><strong>Document:</strong> {documentTitle}</span>
           <span><strong>Date:</strong> {generatedDate}</span>
-          <span><strong>Questions Formulated:</strong> {discussionPoints.length} Items</span>
+          <span><strong>Questions:</strong> {discussionPoints.length} Items</span>
         </div>
 
         <div className="modal-body">
-          <div className="prep-notice-banner">
-            ⚖️ <strong>Important Ethical Notice:</strong> These items are strategic discussion questions formulated from your document's high-attention clauses. They do not constitute legal conclusions or legal advice.
+          <div className="prep-notice-banner" role="note">
+            <span className="prep-notice-icon" aria-hidden="true">ℹ️</span>
+            <span>
+              <strong>Consultation Preparation:</strong> These questions highlight key risk allocations and obligations in the agreement. They are intended for consultation preparation and do not constitute legal advice.
+            </span>
           </div>
 
           <div className="prep-questions-list">
@@ -112,11 +125,11 @@ export const CounselPrepModal = ({
         </div>
 
         <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>
+          <button type="button" className="btn-secondary" onClick={onClose}>
             Close
           </button>
-          <button className="btn-primary" onClick={handleCopy}>
-            {isCopied ? '✓ Copied to Clipboard!' : '📋 Copy Prep Sheet to Clipboard'}
+          <button type="button" className="btn-primary" onClick={handleCopy}>
+            {isCopied ? '✓ Copied to Clipboard' : '📋 Copy Questions for Counsel'}
           </button>
         </div>
       </div>

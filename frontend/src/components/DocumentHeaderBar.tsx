@@ -9,79 +9,71 @@ interface DocumentHeaderBarProps {
 
 export const DocumentHeaderBar = ({
   metadata,
-  isRealDocument = false,
   onReset,
   onOpenPrepSheet,
 }: DocumentHeaderBarProps) => {
   return (
-    <div className="doc-header-card">
+    <section className="doc-header-card" aria-label="Document Metadata">
       <div className="doc-header-top">
         <div className="doc-identity">
-          <div className="doc-badge-row" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px' }}>
-            <div className="doc-type-badge">{metadata.document_type}</div>
-            {isRealDocument ? (
-              <span className="file-badge doc-badge-real">
-                ⚡ Real Extracted PDF (PyMuPDF)
-              </span>
-            ) : (
-              <span className="file-badge doc-badge-sample">
-                📑 Sample Demo Document
-              </span>
+          <div className="doc-type-pill">{metadata.document_type || 'Legal Agreement'}</div>
+          <h2 className="doc-title" title={metadata.filename}>{metadata.filename}</h2>
+          <div className="doc-stats">
+            <span>{metadata.page_count} {metadata.page_count === 1 ? 'Page' : 'Pages'}</span>
+            <span className="doc-stat-sep">•</span>
+            <span>{metadata.file_size_formatted}</span>
+            {metadata.section_count !== undefined && metadata.section_count > 0 && (
+              <>
+                <span className="doc-stat-sep">•</span>
+                <span>{metadata.section_count} Sections</span>
+              </>
             )}
           </div>
-
-          <h2 className="doc-title">{metadata.filename}</h2>
-          <span className="doc-stats">
-            {metadata.page_count} Pages · {metadata.file_size_formatted}
-            {metadata.section_count !== undefined && ` · ${metadata.section_count} Sections`}
-            {metadata.chunk_count !== undefined && ` · ${metadata.chunk_count} Chunks`}
-          </span>
         </div>
 
         <div className="doc-header-actions">
           <button
+            type="button"
             className="btn-prep-sheet"
             onClick={onOpenPrepSheet}
-            title="Generate questions to review with legal counsel"
+            title="Open questions to discuss with legal counsel"
           >
-            📋 Attorney Prep Sheet
+            <span className="btn-icon" aria-hidden="true">📋</span>
+            <span>Questions for Counsel</span>
           </button>
           <button
+            type="button"
             className="btn-secondary btn-sm"
             onClick={onReset}
-            title="Upload or select another contract"
+            title="Upload another document"
           >
-            ↺ Change Document
+            <span>Upload New Document</span>
           </button>
         </div>
       </div>
 
       <div className="doc-metadata-grid">
         <div className="meta-block">
-          <span className="meta-block-label">{isRealDocument ? 'Document Status' : 'Parties'}</span>
+          <span className="meta-block-label">Parties</span>
           <span className="meta-block-value">
-            {isRealDocument ? (
-              <>Live Parsed <span className="meta-sep">•</span> Section-Aware</>
-            ) : (
-              <>{metadata.parties.first_party} <span className="meta-sep">↔</span> {metadata.parties.second_party}</>
-            )}
+            {metadata.parties.first_party} <span className="meta-sep">↔</span> {metadata.parties.second_party}
           </span>
         </div>
 
         <div className="meta-block">
-          <span className="meta-block-label">{isRealDocument ? 'Scope & Length' : 'Effective Date & Term'}</span>
+          <span className="meta-block-label">Effective Date &amp; Term</span>
           <span className="meta-block-value">
-            {metadata.effective_date} ({metadata.duration})
+            {metadata.effective_date} <span className="meta-sep">·</span> {metadata.duration}
           </span>
         </div>
 
         <div className="meta-block">
-          <span className="meta-block-label">{isRealDocument ? 'Pipeline Processing' : 'Financial Commitments'}</span>
+          <span className="meta-block-label">Financial &amp; Key Commitments</span>
           <span className="meta-block-value highlight">
             {metadata.financial_summary}
           </span>
         </div>
       </div>
-    </div>
+    </section>
   );
 };

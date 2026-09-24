@@ -1,27 +1,15 @@
 interface ExecutiveSummaryCardProps {
   summary: string;
-  isRealDocument?: boolean;
 }
 
-export const ExecutiveSummaryCard = ({ summary, isRealDocument = false }: ExecutiveSummaryCardProps) => {
+export const ExecutiveSummaryCard = ({ summary }: ExecutiveSummaryCardProps) => {
   return (
-    <div className="executive-summary-card">
+    <section className="executive-summary-card" aria-label="Executive Summary">
       <div className="summary-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="summary-badge">
-            {isRealDocument ? '✦ Document Extraction & Structure' : '✦ LexLens Executive Summary'}
-          </span>
-          {isRealDocument && (
-            <span className="summary-live-tag">
-              Live Parsing
-            </span>
-          )}
-        </div>
-        <span className="summary-hint">
-          {isRealDocument ? 'Section-Aware Ingestion Overview' : 'Plain-Language Overview'}
-        </span>
+        <h3 className="summary-title">Executive Summary</h3>
+        <span className="summary-hint">Plain-language overview</span>
       </div>
       <p className="summary-body">{summary}</p>
-    </div>
+    </section>
   );
 };

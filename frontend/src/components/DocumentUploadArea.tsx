@@ -32,16 +32,15 @@ export const DocumentUploadArea = ({
 
     const isPdfExt = file.name.toLowerCase().endsWith('.pdf');
     if (!isPdfExt) {
-      setInternalError(`Unsupported format for '${file.name}'. Only PDF documents (.pdf) are supported.`);
+      setInternalError(`Unsupported file format. Please upload a PDF document (.pdf).`);
       return;
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setInternalError(`File size exceeds the 10 MB limit (${(file.size / (1024 * 1024)).toFixed(2)} MB).`);
+      setInternalError(`File size exceeds the 10 MB limit (${(file.size / (1024 * 1024)).toFixed(1)} MB).`);
       return;
     }
 
-    // Pass valid file to the real backend upload pipeline
     onUploadFile(file);
   };
 
@@ -73,27 +72,23 @@ export const DocumentUploadArea = ({
   };
 
   return (
-    <div className="upload-section">
-      <div className="section-header">
-        <div>
-          <h2 className="section-title">Document Ingestion &amp; Clause Analysis</h2>
-          <p className="section-subtitle">
-            Upload your PDF contract for real-time parsing with PyMuPDF, or test instantly with realistic pre-loaded sample agreements.
-          </p>
-        </div>
-        <span className="section-badge active">Live PDF Pipeline Ready</span>
-      </div>
-
+    <div className="upload-container">
       {activeError && (
         <div className="upload-error-banner" role="alert">
-          <span className="error-icon">⚠️</span>
+          <span className="error-icon" aria-hidden="true">⚠️</span>
           <div className="error-body">{activeError}</div>
-          <button className="btn-close-error" onClick={() => setInternalError(null)} title="Dismiss">
+          <button
+            className="btn-close-error"
+            onClick={() => setInternalError(null)}
+            title="Dismiss error"
+            aria-label="Dismiss error"
+          >
             ✕
           </button>
         </div>
       )}
 
+      {/* Primary Upload Action */}
       <div
         className={`upload-dropzone ${isDragging ? 'dragging' : ''}`}
         onDragOver={handleDragOver}
@@ -102,8 +97,13 @@ export const DocumentUploadArea = ({
         onClick={() => fileInputRef.current?.click()}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
-        aria-label="Upload PDF Contract"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
+        aria-label="Upload legal document in PDF format, up to 10 megabytes"
       >
         <input
           id={fileInputId}
@@ -114,47 +114,66 @@ export const DocumentUploadArea = ({
           style={{ display: 'none' }}
         />
 
-        <div className="upload-icon-wrapper">📄</div>
-        <h3 className="dropzone-title">Click to upload or drag &amp; drop PDF</h3>
-        <p className="dropzone-description">
-          Upload any legal contract, NDA, or vendor agreement up to <strong>10 MB</strong>.
+        <div className="dropzone-icon" aria-hidden="true">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="12" y1="18" x2="12" y2="12" />
+            <line x1="9" y1="15" x2="15" y2="15" />
+          </svg>
+        </div>
+
+        <h2 className="dropzone-headline">Upload legal document</h2>
+        <p className="dropzone-subhead">
+          Drag and drop your contract here, or <span className="dropzone-browse">browse files</span>
         </p>
 
-        <div className="file-badges">
-          <span className="file-badge active">.PDF Only</span>
-          <span className="file-badge">Max 10 MB</span>
-          <span className="file-badge">In-Memory Extraction</span>
-        </div>
+        <span className="dropzone-meta">PDF • up to 10 MB</span>
       </div>
 
-      {/* Pre-loaded Sample Document Selectors */}
-      <div className="sample-documents-wrapper">
-        <span className="sample-label">Or test with realistic pre-loaded sample agreements:</span>
-        <div className="sample-buttons-row">
+      {/* Explore a Sample Document */}
+      <div className="sample-section">
+        <span className="sample-section-label">Or explore a sample document</span>
+        <div className="sample-grid">
           <button
-            className="btn-sample"
+            type="button"
+            className="sample-card"
             onClick={() => onSelectSample(SAMPLE_SERVICES_AGREEMENT)}
-            title="Load Master Services Agreement with uncapped liability and IP clauses"
+            title="Load Master Services Agreement sample"
           >
-            <span className="btn-sample-icon">📑</span>
-            <div className="btn-sample-content">
-              <strong>Master Services Agreement</strong>
-              <span>sample_services_agreement.pdf (3 Pages · 7 Clauses)</span>
+            <div className="sample-card-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
             </div>
-            <span className="btn-sample-arrow">→</span>
+            <div className="sample-card-info">
+              <span className="sample-card-title">Services Agreement</span>
+              <span className="sample-card-desc">Commercial MSA • 3 Pages • 7 Clauses</span>
+            </div>
+            <span className="sample-card-arrow" aria-hidden="true">→</span>
           </button>
 
           <button
-            className="btn-sample"
+            type="button"
+            className="sample-card"
             onClick={() => onSelectSample(SAMPLE_NDA)}
-            title="Load Mutual Non-Disclosure Agreement with confidentiality covenants"
+            title="Load Non-Disclosure Agreement sample"
           >
-            <span className="btn-sample-icon">🔒</span>
-            <div className="btn-sample-content">
-              <strong>Mutual Non-Disclosure Agreement</strong>
-              <span>sample_nda.pdf (2 Pages · 4 Clauses)</span>
+            <div className="sample-card-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
             </div>
-            <span className="btn-sample-arrow">→</span>
+            <div className="sample-card-info">
+              <span className="sample-card-title">Non-Disclosure Agreement</span>
+              <span className="sample-card-desc">Mutual NDA • 2 Pages • 4 Clauses</span>
+            </div>
+            <span className="sample-card-arrow" aria-hidden="true">→</span>
           </button>
         </div>
       </div>

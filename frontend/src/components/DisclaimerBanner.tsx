@@ -1,10 +1,16 @@
 export const DisclaimerBanner = () => {
   return (
-    <div className="disclaimer-banner" role="alert">
-      <div className="disclaimer-icon">⚠️</div>
-      <div className="disclaimer-content">
-        <strong>Legal Disclaimer:</strong> LexLens provides automated legal information and document assistance to help users navigate and understand legal materials. LexLens is <em>not</em> a law firm and does <strong>not</strong> provide legal advice or replace the services of a qualified attorney or legal professional.
+    <div className="disclaimer-banner" role="note" aria-label="Legal disclaimer">
+      <div className="disclaimer-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
       </div>
+      <p className="disclaimer-text">
+        <strong>Notice:</strong> LexLens provides legal information and document assistance, not professional legal advice.
+      </p>
     </div>
   );
 };

@@ -20,7 +20,6 @@ interface DisplayedQA {
   sources: SourceCitation[];
   legacySourceCitation?: string;
   legacyPageNumber?: number;
-  mode?: 'vector_rag' | 'degraded_direct_chunks' | 'sample_offline';
 }
 
 export const GroundedQAPanel = ({
@@ -29,7 +28,6 @@ export const GroundedQAPanel = ({
   documentName,
   documentId,
   rawChunks,
-  indexingStatus,
   onOpenSource,
 }: GroundedQAPanelProps) => {
   const [query, setQuery] = useState('');
@@ -42,7 +40,6 @@ export const GroundedQAPanel = ({
         sources: [],
         legacySourceCitation: qaDatabase[0].source,
         legacyPageNumber: qaDatabase[0].page_number,
-        mode: 'sample_offline',
       };
     }
     return null;
@@ -55,7 +52,7 @@ export const GroundedQAPanel = ({
     setIsLoading(true);
     setQuery(questionText);
 
-    // 1. Primary RAG Pathway: If documentId is available, query PostgreSQL + pgvector RAG endpoint
+    // 1. Primary RAG Pathway: If documentId is available, query indexed document
     if (documentId) {
       try {
         const ragRes = await askDocumentQuestion(documentId, questionText);
@@ -64,16 +61,15 @@ export const GroundedQAPanel = ({
           answer: ragRes.answer,
           groundingStatus: ragRes.grounding_status,
           sources: ragRes.sources,
-          mode: 'vector_rag',
         });
         setIsLoading(false);
         return;
       } catch (err) {
-        console.warn('RAG endpoint unavailable or database offline, falling back to direct chunk QA:', err);
+        console.warn('RAG endpoint unavailable, attempting direct chunk evaluation:', err);
       }
     }
 
-    // 2. Direct Chunk Grounding Fallback: In-flight chunk evaluation via LLM provider (Degraded Mode)
+    // 2. Direct Chunk Grounding Fallback: In-flight chunk evaluation
     if (rawChunks && rawChunks.length > 0) {
       try {
         const qaRes = await askQuestion(questionText, rawChunks);
@@ -89,7 +85,6 @@ export const GroundedQAPanel = ({
               text: qaRes.verbatim_excerpt || '',
             },
           ],
-          mode: 'degraded_direct_chunks',
         });
         setIsLoading(false);
         return;
@@ -98,7 +93,7 @@ export const GroundedQAPanel = ({
       }
     }
 
-    // 3. Fallback: Local sample keyword matching (for offline demo mode)
+    // 3. Fallback: Sample matching for offline mode
     const qLower = questionText.toLowerCase();
     const match = qaDatabase.find((item) => {
       const itemLower = item.question.toLowerCase();
@@ -131,52 +126,50 @@ export const GroundedQAPanel = ({
         sources: [],
         legacySourceCitation: match.source,
         legacyPageNumber: match.page_number,
-        mode: 'sample_offline',
       });
     } else {
       setActiveQA({
         question: questionText,
-        answer: `The document '${documentName}' does not provide enough information to answer that question.`,
+        answer: `The document '${documentName}' does not provide enough information to address this question.`,
         groundingStatus: 'insufficient_context',
         sources: [],
-        legacySourceCitation: 'Document-wide search · No explicit matching clauses found',
+        legacySourceCitation: 'Document-wide search · No matching provisions found',
         legacyPageNumber: 1,
-        mode: 'sample_offline',
       });
     }
     setIsLoading(false);
   };
 
   return (
-    <div className="qa-section-card">
+    <section className="qa-section-card" aria-label="Document-Grounded Q&A">
       <div className="qa-header">
-        <div className="qa-title-group">
-          <span className="qa-badge">✦ Grounded Document Assistant</span>
-          <h3 className="qa-title">Ask Questions About This Agreement</h3>
-          <p className="qa-subtitle">
-            Answers are retrieved via semantic vector search in PostgreSQL + pgvector and grounded strictly in authentic document clauses.
-          </p>
-        </div>
+        <h3 className="qa-title">Ask about this document</h3>
+        <p className="qa-subtitle">
+          Answers are grounded directly in your document with verified source citations.
+        </p>
       </div>
 
       {/* Suggested Questions */}
-      <div className="qa-suggestions-wrapper">
-        <span className="qa-suggestions-label">Suggested Questions:</span>
-        <div className="qa-chips-row">
-          {suggestedQuestions.map((q) => (
-            <button
-              key={q}
-              className={`qa-chip ${query === q ? 'active' : ''}`}
-              onClick={() => handleAsk(q)}
-              disabled={isLoading}
-            >
-              💬 {q}
-            </button>
-          ))}
+      {suggestedQuestions.length > 0 && (
+        <div className="qa-suggestions-wrapper">
+          <span className="qa-suggestions-label">Suggested:</span>
+          <div className="qa-chips-row">
+            {suggestedQuestions.map((q) => (
+              <button
+                key={q}
+                type="button"
+                className={`qa-chip ${query === q ? 'active' : ''}`}
+                onClick={() => handleAsk(q)}
+                disabled={isLoading}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Query Input */}
+      {/* Query Input Form */}
       <form
         className="qa-form"
         onSubmit={(e) => {
@@ -188,65 +181,51 @@ export const GroundedQAPanel = ({
           <input
             type="text"
             className="qa-input"
-            placeholder="Type a legal question or select a suggestion above..."
+            placeholder="Type a question about terms, liabilities, or deadlines..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={isLoading}
+            aria-label="Ask a question about this document"
           />
-          <button type="submit" className="btn-primary btn-ask" disabled={isLoading || !query.trim()}>
-            {isLoading ? 'Retrieving...' : 'Ask Document →'}
+          <button
+            type="submit"
+            className="btn-primary btn-ask"
+            disabled={isLoading || !query.trim()}
+          >
+            {isLoading ? 'Searching...' : 'Ask Document →'}
           </button>
         </div>
       </form>
 
       {/* Response Box */}
       {isLoading ? (
-        <div className="qa-loading-box">
-          <div className="spinner-progress-small" />
-          <span>
-            {indexingStatus === 'indexed'
-              ? 'Performing vector similarity search & verifying grounded citations in pgvector...'
-              : 'Evaluating in-flight document chunks & verifying grounded citations (Direct Mode)...'}
-          </span>
+        <div className="qa-loading-box" role="status" aria-live="polite">
+          <div className="spinner-progress-small" aria-hidden="true" />
+          <span>Searching document and verifying sources...</span>
         </div>
       ) : (
         activeQA && (
-          <div className="qa-result-box">
-            <div className="qa-result-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div className="qa-query-label">
-                <strong>Q: {activeQA.question}</strong>
-              </div>
-              {activeQA.mode === 'vector_rag' && (
-                <span className="qa-mode-badge rag-badge" title="Retrieved via PostgreSQL + pgvector cosine similarity">
-                  ✦ Semantic Vector RAG
-                </span>
-              )}
-              {activeQA.mode === 'degraded_direct_chunks' && (
-                <span className="qa-mode-badge degraded-badge" title="Vector database offline: evaluated directly against in-flight chunks">
-                  ⚡ Direct Chunks (DB Offline)
-                </span>
-              )}
-              {activeQA.mode === 'sample_offline' && (
-                <span className="qa-mode-badge sample-badge" title="Pre-indexed sample agreement knowledge base">
-                  📑 Sample Agreement
-                </span>
-              )}
+          <div className="qa-result-box" role="region" aria-label="Question Answer">
+            <div className="qa-result-header">
+              <strong className="qa-query-label">{activeQA.question}</strong>
             </div>
 
             {activeQA.groundingStatus === 'insufficient_context' && (
-              <div className="qa-insufficient-badge">
-                <span>⚠️ Insufficient Document Context</span>
-                <span>·</span>
-                <span>Question is out-of-scope or unaddressed in agreement</span>
+              <div className="qa-insufficient-badge" role="status">
+                <span className="insufficient-icon" aria-hidden="true">⚠️</span>
+                <span>Unaddressed in document — this topic is not specified in the agreement.</span>
               </div>
             )}
 
-            <p className="qa-answer-text">{activeQA.answer}</p>
+            <div className="qa-answer-block">
+              <span className="qa-block-label">Answer</span>
+              <p className="qa-answer-text">{activeQA.answer}</p>
+            </div>
 
             {/* Structured Clickable Source Citations */}
             {activeQA.sources.length > 0 ? (
               <div className="qa-sources-list">
-                <span className="qa-sources-title">Verified Citations:</span>
+                <span className="qa-sources-title">Source Citations:</span>
                 <div className="qa-sources-chips">
                   {activeQA.sources.map((source, index) => (
                     <button
@@ -261,9 +240,9 @@ export const GroundedQAPanel = ({
                           chunk_id: source.chunk_id,
                         })
                       }
-                      title="Click to view verified source text in drawer"
+                      title="Inspect original source text"
                     >
-                      <span className="source-icon">📄</span>
+                      <span className="source-icon" aria-hidden="true">📄</span>
                       <span className="source-text">
                         Page {source.page_number} · {source.section_title}
                       </span>
@@ -274,7 +253,7 @@ export const GroundedQAPanel = ({
               </div>
             ) : activeQA.legacySourceCitation ? (
               <div className="qa-sources-list">
-                <span className="qa-sources-title">Verified Citations:</span>
+                <span className="qa-sources-title">Source Citations:</span>
                 <div className="qa-sources-chips">
                   <button
                     type="button"
@@ -287,9 +266,9 @@ export const GroundedQAPanel = ({
                         chunk_id: 'sample-source-chunk',
                       })
                     }
-                    title="Click to view verified source text in drawer"
+                    title="Inspect original source text"
                   >
-                    <span className="source-icon">📄</span>
+                    <span className="source-icon" aria-hidden="true">📄</span>
                     <span className="source-text">{activeQA.legacySourceCitation}</span>
                     <span className="source-verify-tag">Inspect ↗</span>
                   </button>
@@ -299,6 +278,6 @@ export const GroundedQAPanel = ({
           </div>
         )
       )}
-    </div>
+    </section>
   );
 };

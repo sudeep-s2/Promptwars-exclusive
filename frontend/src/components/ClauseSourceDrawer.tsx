@@ -28,7 +28,22 @@ export const ClauseSourceDrawer = ({
 
   const handleCopy = async () => {
     try {
-      const formatted = `[LexLens Clause Analysis]\nTitle: ${clause.title}\nSection: ${clause.section_title} (Page ${clause.page_number})\nAttention: ${clause.attention_level.toUpperCase()}\n\nPlain-Language Summary:\n${clause.plain_english}\n\nPractical Impact:\n${clause.why_it_matters}\n\nVerbatim Text:\n"${clause.verbatim_excerpt}"`;
+      const formatted = [
+        `[LexLens Clause Analysis]`,
+        `Title: ${clause.title}`,
+        `Section: ${clause.section_title} (Page ${clause.page_number})`,
+        `Attention Level: ${clause.attention_level.toUpperCase()}`,
+        ``,
+        `Plain-Language Summary:`,
+        clause.plain_english,
+        ``,
+        `Practical Impact:`,
+        clause.why_it_matters,
+        ``,
+        `Original Document Text:`,
+        `"${clause.verbatim_excerpt}"`,
+      ].join('\n');
+
       await navigator.clipboard.writeText(formatted);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
@@ -37,56 +52,69 @@ export const ClauseSourceDrawer = ({
     }
   };
 
+  const getAttentionLabel = (level: string) => {
+    switch (level) {
+      case 'high':
+        return 'High Attention';
+      case 'moderate':
+        return 'Moderate Attention';
+      case 'standard':
+        return 'Standard';
+      default:
+        return level;
+    }
+  };
+
   return (
-    <div className="drawer-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+    <div
+      className="drawer-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-title"
+    >
       <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-header">
           <div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span className="drawer-category">{clause.category}</span>
-              {clause.is_real_extracted && (
-                <span className="live-extract-tag">
-                  Live Extraction
-                </span>
-              )}
-            </div>
+            <span className="drawer-category">{clause.category}</span>
             <h3 id="drawer-title" className="drawer-title">{clause.title}</h3>
           </div>
-          <button className="btn-close-drawer" onClick={onClose} aria-label="Close Drawer">
+          <button
+            type="button"
+            className="btn-close-drawer"
+            onClick={onClose}
+            aria-label="Close Drawer"
+          >
             ✕
           </button>
         </div>
 
         <div className="drawer-body">
-          {/* TIER 1 & 2: AI Interpretation & Plain-Language Explanation */}
-          <div className="drawer-tier tier-interpretation">
+          {/* LAYER 1 & 2: Plain-Language Summary & Practical Impact */}
+          <section className="drawer-tier tier-interpretation" aria-label="Plain-Language Interpretation">
             <div className="tier-header">
               <span className="tier-badge ai-badge">
-                ✦ LexLens Plain-Language Translation
+                Plain-Language Interpretation
               </span>
               <span className={`drawer-attention-tag tag-${clause.attention_level}`}>
-                {clause.attention_level === 'high'
-                  ? '🔴 High Attention'
-                  : clause.attention_level === 'moderate'
-                  ? '🟡 Moderate Attention'
-                  : '🟢 Standard Clause'}
+                <span className={`badge-dot dot-${clause.attention_level}`} aria-hidden="true" />
+                {getAttentionLabel(clause.attention_level)}
               </span>
             </div>
+
             <p className="tier-explanation">{clause.plain_english}</p>
 
             <div className="tier-impact">
-              <strong>Why This Matters:</strong>
-              <p>{clause.why_it_matters}</p>
+              <strong className="tier-impact-label">Practical Impact:</strong>
+              <p className="tier-impact-text">{clause.why_it_matters}</p>
             </div>
-          </div>
+          </section>
 
-          {/* TIER 3: Verbatim Immutable Document Source */}
-          <div className="drawer-tier tier-verbatim">
+          {/* LAYER 3: Original Document Verbatim Text */}
+          <section className="drawer-tier tier-verbatim" aria-label="Original Document Text">
             <div className="tier-header">
               <span className="tier-badge source-badge">
-                {clause.is_real_extracted
-                  ? '📄 Original Immutable Text [PyMuPDF Live Extracted]'
-                  : '📄 Original Immutable Legal Text'}
+                Original Document Text
               </span>
               <span className="tier-citation">
                 Page {clause.page_number} · {clause.section_title}
@@ -96,22 +124,23 @@ export const ClauseSourceDrawer = ({
             <div className="verbatim-text-well">
               <pre className="verbatim-pre">{clause.verbatim_excerpt}</pre>
             </div>
-          </div>
+          </section>
         </div>
 
         <div className="drawer-footer">
-          <button className="btn-secondary btn-sm" onClick={handleCopy}>
+          <button type="button" className="btn-secondary btn-sm" onClick={handleCopy}>
             {isCopied ? '✓ Copied Analysis' : '📋 Copy Analysis & Source'}
           </button>
           {onAskAboutClause && (
             <button
+              type="button"
               className="btn-primary btn-sm"
               onClick={() => {
                 onAskAboutClause(clause.title);
                 onClose();
               }}
             >
-              💬 Ask Question About This Clause
+              Ask About This Clause →
             </button>
           )}
         </div>

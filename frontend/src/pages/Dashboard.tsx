@@ -17,7 +17,7 @@ export const Dashboard = () => {
   const [uploadFilename, setUploadFilename] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // 1. Mock Sample Document Flow (Instant visual testing)
+  // 1. Mock Sample Document Flow (Zero-latency exploration)
   const handleSelectSample = (doc: WorkspaceDocument) => {
     setIsRealUpload(false);
     setSelectedDoc(doc);
@@ -25,7 +25,7 @@ export const Dashboard = () => {
     setView('processing');
   };
 
-  // 2. Real Upload Ingestion Flow (FastAPI + PyMuPDF extraction)
+  // 2. Real Upload Ingestion Flow
   const handleUploadRealFile = async (file: File) => {
     setIsRealUpload(true);
     setUploadFilename(file.name);
@@ -58,49 +58,22 @@ export const Dashboard = () => {
 
   return (
     <div className="dashboard-layout">
-      <Header />
+      <Header
+        isInWorkspace={view === 'workspace'}
+        onNewDocument={handleResetToLanding}
+      />
 
       <main className="dashboard-main">
-        {/* Persistent, Non-Dismissible Legal Notice Banner */}
-        <DisclaimerBanner />
-
         {/* VIEW 1: LANDING & INGESTION */}
         {view === 'landing' && (
-          <>
-            {/* Hero / Problem Definition */}
-            <section className="hero-section">
-              <h2 className="hero-title">Demystifying Legal Documents with AI</h2>
+          <div className="landing-view">
+            {/* Hero / Value Proposition */}
+            <section className="hero-section" aria-label="Product Overview">
+              <h1 className="hero-title">Understand what matters in your legal documents.</h1>
               <p className="hero-description">
-                LexLens translates dense commercial agreements into plain-English commitments, surfaces critical liabilities with verbatim source proof, and compiles an actionable checklist to review with your attorney.
+                LexLens highlights important clauses, explains them in plain language, and helps you verify them against the original document.
               </p>
-
-              <div className="features-overview">
-                <div className="feature-item">
-                  <span className="feature-icon">🔍</span>
-                  <div>
-                    <strong>Attention Radar</strong>
-                    <p>Highlight uncapped indemnities, payment milestones, and termination traps.</p>
-                  </div>
-                </div>
-                <div className="feature-item">
-                  <span className="feature-icon">💬</span>
-                  <div>
-                    <strong>Grounded Q&amp;A</strong>
-                    <p>Query contracts directly with verifiable page and paragraph citations.</p>
-                  </div>
-                </div>
-                <div className="feature-item">
-                  <span className="feature-icon">📋</span>
-                  <div>
-                    <strong>Attorney Prep Sheet</strong>
-                    <p>Generate high-leverage discussion questions to optimize legal consultation.</p>
-                  </div>
-                </div>
-              </div>
             </section>
-
-            {/* Backend Connectivity Status */}
-            <BackendStatusCard />
 
             {/* Document Upload Area & Sample Documents */}
             <DocumentUploadArea
@@ -108,10 +81,16 @@ export const Dashboard = () => {
               onUploadFile={handleUploadRealFile}
               externalError={uploadError}
             />
-          </>
+
+            {/* Persistent Legal Disclaimer */}
+            <DisclaimerBanner />
+
+            {/* Development-Only Diagnostics (hidden in production) */}
+            <BackendStatusCard />
+          </div>
         )}
 
-        {/* VIEW 2: PROCESSING (Real API Call or Sample Animation) */}
+        {/* VIEW 2: PROCESSING STATE */}
         {view === 'processing' && (
           <ProcessingState
             documentName={isRealUpload ? uploadFilename : selectedDoc.filename}
@@ -122,15 +101,18 @@ export const Dashboard = () => {
 
         {/* VIEW 3: ACTIVE ANALYSIS WORKSPACE */}
         {view === 'workspace' && (
-          <AnalysisWorkspace
-            document={selectedDoc}
-            onReset={handleResetToLanding}
-          />
+          <>
+            <DisclaimerBanner />
+            <AnalysisWorkspace
+              document={selectedDoc}
+              onReset={handleResetToLanding}
+            />
+          </>
         )}
       </main>
 
       <footer className="dashboard-footer">
-        <p>LexLens • Grounded Legal Document Intelligence — PromptWars Exclusive Edition</p>
+        <p>LexLens • Legal Document Intelligence</p>
       </footer>
     </div>
   );

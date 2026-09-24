@@ -2,11 +2,21 @@ import { useState, useEffect, useCallback } from 'react';
 import { getHealthStatus, API_BASE_URL } from '../services/api';
 import type { HealthResponse, ConnectionState } from '../types/health';
 
+/**
+ * Developer diagnostic probe for backend connection.
+ * Completely hidden in production environments.
+ */
 export const BackendStatusCard = () => {
+  // Completely hide developer diagnostic panel in production
+  if (!import.meta.env.DEV) {
+    return null;
+  }
+
   const [state, setState] = useState<ConnectionState>('idle');
   const [data, setData] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const checkConnection = useCallback(async () => {
     setState('checking');
@@ -29,79 +39,67 @@ export const BackendStatusCard = () => {
   }, [checkConnection]);
 
   return (
-    <div className="status-card">
-      <div className="status-card-header">
-        <div className="status-card-title-group">
-          <span className="card-badge">REST API Test</span>
-          <h2 className="status-card-title">Backend Connection Status</h2>
+    <aside className="dev-status-panel" aria-label="Development Diagnostics">
+      <div className="dev-status-header" onClick={() => setIsCollapsed(!isCollapsed)}>
+        <div className="dev-status-pill">
+          <span
+            className={`status-dot ${
+              state === 'connected'
+                ? 'status-dot-green'
+                : state === 'checking'
+                ? 'status-dot-yellow'
+                : 'status-dot-red'
+            }`}
+          />
+          <span className="dev-status-title">Dev Diagnostics: {state}</span>
         </div>
         <button
-          onClick={checkConnection}
-          disabled={state === 'checking'}
-          className="btn-refresh"
-          title="Re-run health check probe"
+          type="button"
+          className="btn-dev-toggle"
+          aria-expanded={!isCollapsed}
         >
-          {state === 'checking' ? 'Testing...' : 'Test Connection'}
+          {isCollapsed ? 'Show' : 'Hide'}
         </button>
       </div>
 
-      <div className="status-content">
-        <div className="status-indicator-row">
-          <div className="status-pill-container">
-            <span
-              className={`status-dot ${
-                state === 'connected'
-                  ? 'status-dot-green'
-                  : state === 'checking'
-                  ? 'status-dot-yellow'
-                  : state === 'error'
-                  ? 'status-dot-red'
-                  : 'status-dot-gray'
-              }`}
-            />
-            <span className="status-label">
-              {state === 'connected' && 'Connected'}
-              {state === 'checking' && 'Connecting...'}
-              {state === 'error' && 'Disconnected'}
-              {state === 'idle' && 'Idle'}
-            </span>
+      {!isCollapsed && (
+        <div className="dev-status-body">
+          <div className="data-row">
+            <span className="data-key">Target:</span>
+            <span className="data-value"><code>{API_BASE_URL}/api/health</code></span>
           </div>
-
-          <span className="status-meta">
-            Target: <code>{API_BASE_URL}/api/health</code>
-          </span>
-        </div>
-
-        {state === 'connected' && data && (
-          <div className="status-success-details">
-            <div className="data-row">
-              <span className="data-key">Service:</span>
-              <span className="data-value highlight">{data.service}</span>
-            </div>
-            <div className="data-row">
-              <span className="data-key">Operational Status:</span>
-              <span className="data-value status-ok">{data.status}</span>
-            </div>
-            {lastChecked && (
+          {data && (
+            <>
               <div className="data-row">
-                <span className="data-key">Last Probe:</span>
-                <span className="data-value">{lastChecked}</span>
+                <span className="data-key">Service:</span>
+                <span className="data-value">{data.service}</span>
               </div>
-            )}
-          </div>
-        )}
-
-        {state === 'error' && (
-          <div className="status-error-details">
-            <div className="error-message">
-              <strong>Connection Error:</strong> {error}
+              <div className="data-row">
+                <span className="data-key">Status:</span>
+                <span className="data-value status-ok">{data.status}</span>
+              </div>
+            </>
+          )}
+          {lastChecked && (
+            <div className="data-row">
+              <span className="data-key">Last Probe:</span>
+              <span className="data-value">{lastChecked}</span>
             </div>
-            <p className="error-hint">
-              Ensure the FastAPI backend is running on <code>{API_BASE_URL}</code>.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+          )}
+          {error && (
+            <div className="dev-error-text">
+              {error}
+            </div>
+          )}
+          <button
+            onClick={checkConnection}
+            disabled={state === 'checking'}
+            className="btn-dev-retry"
+          >
+            {state === 'checking' ? 'Testing...' : 'Probe Again'}
+          </button>
+        </div>
+      )}
+    </aside>
   );
 };
