@@ -1,7 +1,8 @@
 import uuid
+import re
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, File, UploadFile, Query, HTTPException, Depends, status
+from fastapi import APIRouter, File, UploadFile, Query, Path, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -23,9 +24,29 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
 
+def sanitize_error_detail(detail: str) -> str:
+    """Redact any potential API keys, connection strings, or sensitive tokens from error details."""
+    if not isinstance(detail, str):
+        return "An error occurred."
+    redacted = re.sub(r"AIza[0-9A-Za-z\-_]{20,}", "[REDACTED_API_KEY]", detail)
+    redacted = re.sub(r"xai-[0-9A-Za-z\-_]{15,}", "[REDACTED_API_KEY]", redacted)
+    redacted = re.sub(r"://([^:]+):([^@]+)@", r"://\1:[REDACTED]@", redacted)
+    return redacted
+
+
 class QABody(BaseModel):
-    question: str = Field(..., description="User query about the legal document")
-    chunks: List[DocumentChunk] = Field(..., description="Retrieved or all document chunks")
+    question: str = Field(
+        ...,
+        min_length=2,
+        max_length=1000,
+        description="User query about the legal document",
+    )
+    chunks: List[DocumentChunk] = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Retrieved or provided document chunks",
+    )
 
 
 @router.post(
@@ -74,14 +95,14 @@ async def upload_document(
         logger.error("LLM Provider configuration error: %s", ce.message)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ce.message,
+            detail=sanitize_error_detail(ce.message),
         ) from ce
 
     except LLMProviderError as lpe:
         logger.error("LLM Provider error during analysis: %s", lpe.message)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=lpe.message,
+            detail=sanitize_error_detail(lpe.message),
         ) from lpe
 
     except Exception as exc:
@@ -120,8 +141,14 @@ async def analyze_document(
     },
 )
 async def ask_document_question(
-    document_id: str,
-    body: GroundedQuestionRequest,
+    document_id: str = Path(
+        ...,
+        min_length=1,
+        max_length=64,
+        pattern=r"^[a-zA-Z0-9_\-\.]+$",
+        description="Unique identifier for the document",
+    ),
+    body: GroundedQuestionRequest = ...,
     db: Session = Depends(get_db),
 ):
     """
@@ -141,7 +168,10 @@ async def ask_document_question(
         return response
 
     except DocumentNotFoundError as dnfe:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=dnfe.message) from dnfe
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=sanitize_error_detail(dnfe.message),
+        ) from dnfe
 
     except DatabaseUnavailableError as due:
         raise HTTPException(
@@ -150,13 +180,22 @@ async def ask_document_question(
         ) from due
 
     except ConfigurationError as ce:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=ce.message) from ce
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=sanitize_error_detail(ce.message),
+        ) from ce
 
     except LLMProviderError as lpe:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=lpe.message) from lpe
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=sanitize_error_detail(lpe.message),
+        ) from lpe
 
     except RAGError as re:
-        raise HTTPException(status_code=re.status_code, detail=re.message) from re
+        raise HTTPException(
+            status_code=re.status_code,
+            detail=sanitize_error_detail(re.message),
+        ) from re
 
     except Exception as exc:
         logger.exception("Error in RAG Q&A: %s", exc)
@@ -179,9 +218,15 @@ async def grounded_qa(body: QABody):
         response = analyzer.answer_question(question=body.question, chunks=body.chunks)
         return response
     except ConfigurationError as ce:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=ce.message) from ce
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=sanitize_error_detail(ce.message),
+        ) from ce
     except LLMProviderError as lpe:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=lpe.message) from lpe
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=sanitize_error_detail(lpe.message),
+        ) from lpe
     except Exception as exc:
         logger.exception("Error during Q&A: %s", str(exc))
         raise HTTPException(

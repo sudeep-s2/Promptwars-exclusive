@@ -49,7 +49,12 @@ def get_engine():
                 connect_args=connect_args,
             )
         except Exception as exc:
-            logger.warning("Failed to initialize database engine for %s: %s", DATABASE_URL, exc)
+            try:
+                parsed = urlparse(DATABASE_URL)
+                sanitized_db = f"{parsed.hostname or 'localhost'}:{parsed.port or 5432}/{parsed.path.lstrip('/')}"
+            except Exception:
+                sanitized_db = "configured database"
+            logger.warning("Failed to initialize database engine for %s: %s", sanitized_db, exc)
             return None
     return _engine
 

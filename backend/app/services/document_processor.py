@@ -11,6 +11,8 @@ from app.schemas.document import (
 
 # Constants
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+MAX_PAGE_COUNT = 150  # Prevent PDF decompression bombs / memory exhaustion
+MAX_EXTRACTED_CHARS = 2_000_000  # 2M characters limit to protect system resources
 ALLOWED_MIME_TYPES = {"application/pdf", "application/x-pdf"}
 ALLOWED_EXTENSIONS = {".pdf"}
 TARGET_CHUNK_MAX_CHARS = 1400
@@ -70,12 +72,17 @@ class DocumentProcessor:
 
     @staticmethod
     def validate_file(filename: Optional[str], file_bytes: bytes, content_type: Optional[str]) -> None:
-        """Validate file size, extension, and PDF magic bytes."""
-        if not filename:
+        """Validate file size, extension, PDF magic bytes, and sanitize filename."""
+        if not filename or not filename.strip():
             raise UnsupportedFileTypeError("Filename is missing.")
 
-        _, ext = os.path.splitext(filename.lower())
-        if ext not in ALLOWED_EXTENSIONS:
+        # Sanitize against path traversal and null-byte injection
+        clean_name = os.path.basename(filename.replace("\\", "/")).replace("\x00", "").strip()
+        if not clean_name:
+            raise UnsupportedFileTypeError("Filename is invalid.")
+
+        name_part, ext = os.path.splitext(clean_name.lower())
+        if ext not in ALLOWED_EXTENSIONS or not name_part:
             raise UnsupportedFileTypeError(f"Unsupported file format '{ext}'. Only PDF documents (.pdf) are supported.")
 
         if content_type and content_type.lower() not in ALLOWED_MIME_TYPES and content_type != "application/octet-stream":
@@ -272,6 +279,11 @@ class DocumentProcessor:
             if page_count == 0:
                 raise CorruptedPDFError("PDF contains 0 pages.")
 
+            if page_count > MAX_PAGE_COUNT:
+                raise FileTooLargeError(
+                    f"PDF page count ({page_count}) exceeds the maximum allowed limit of {MAX_PAGE_COUNT} pages."
+                )
+
             total_chunks: List[DocumentChunk] = []
             total_text_length = 0
             active_section: Optional[str] = None
@@ -285,6 +297,11 @@ class DocumentProcessor:
                 for chunk in page_chunks:
                     total_chunks.append(chunk)
                     total_text_length += chunk.char_count
+
+                if total_text_length > MAX_EXTRACTED_CHARS:
+                    raise FileTooLargeError(
+                        f"Extracted document text exceeds the maximum allowable limit of {MAX_EXTRACTED_CHARS} characters."
+                    )
 
             if total_text_length == 0 or len(total_chunks) == 0:
                 raise NoExtractableTextError()
