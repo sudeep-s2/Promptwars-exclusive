@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import api_router
+import os
 
 app = FastAPI(
     title="LexLens Legal AI Assistant API",
@@ -14,6 +15,7 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    os.getenv("FRONTEND_URL", "https://lexlens-gilt.vercel.app"),
 ]
 
 app.add_middleware(
