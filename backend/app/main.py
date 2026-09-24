@@ -9,14 +9,16 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Configure CORS for local frontend communication
-origins = [
+# Configure CORS origins for development and production
+frontend_env = os.getenv("FRONTEND_URL", "https://lexlens-gilt.vercel.app")
+configured_origins = [url.strip().rstrip("/") for url in frontend_env.split(",") if url.strip()]
+
+origins = list(dict.fromkeys([
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    os.getenv("FRONTEND_URL", "https://lexlens-gilt.vercel.app"),
-]
+    "https://lexlens-gilt.vercel.app",
+    *configured_origins,
+]))
 
 app.add_middleware(
     CORSMiddleware,
