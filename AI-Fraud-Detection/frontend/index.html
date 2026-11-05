@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShieldAI — Real-Time Fraud Detection</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- Chart.js for charts (CDN, no install needed) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Lucide icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body class="dark">
+
+<!-- ═══════════════════════════════════════════════════════════
+     NAVBAR
+════════════════════════════════════════════════════════════ -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="shield-icon">🛡️</div>
+    <span class="brand-name">Shield<span class="accent">AI</span></span>
+    <span class="brand-tag">Fraud Detection</span>
+  </div>
+  <div class="nav-links">
+    <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+    <button class="nav-btn" data-page="analyze">Analyze</button>
+    <button class="nav-btn" data-page="simulate">Simulate</button>
+    <button class="nav-btn" data-page="about">About</button>
+  </div>
+  <div class="nav-right">
+    <div class="status-pill" id="modelStatus">
+      <span class="status-dot"></span>
+      <span class="status-text">Checking...</span>
+    </div>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGES
+════════════════════════════════════════════════════════════ -->
+<main class="page-container">
+
+  <!-- ─────────────────── DASHBOARD PAGE ─────────────────── -->
+  <section class="page active" id="page-dashboard">
+    <!-- Hero stats row -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card" id="stat-total">
+        <div class="stat-icon">📋</div>
+        <div class="stat-body">
+          <div class="stat-value" id="val-total">—</div>
+          <div class="stat-label">Total Transactions</div>
+        </div>
+      </div>
+      <div class="stat-card danger" id="stat-high">
+        <div class="stat-icon">🔴</div>
+        <div class="stat-body">
+          <div class="stat-value" id="val-high">—</div>
+          <div class="stat-label">High Risk</div>
+        </div>
+      </div>
+      <div class="stat-card warning" id="stat-med">
+        <div class="stat-icon">🟡</div>
+        <div class="stat-body">
+          <div class="stat-value" id="val-med">—</div>
+          <div class="stat-label">Medium Risk</div>
+        </div>
+      </div>
+      <div class="stat-card success" id="stat-low">
+        <div class="stat-icon">🟢</div>
+        <div class="stat-body">
+          <div class="stat-value" id="val-low">—</div>
+          <div class="stat-label">Approved</div>
+        </div>
+      </div>
+      <div class="stat-card info" id="stat-avg">
+        <div class="stat-icon">📊</div>
+        <div class="stat-body">
+          <div class="stat-value" id="val-avg">—</div>
+          <div class="stat-label">Avg Fraud Prob</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="charts-row">
+      <div class="card chart-card">
+        <div class="card-header">
+          <h3>Risk Distribution</h3>
+          <button class="refresh-btn" onclick="loadDashboard()" title="Refresh">↻</button>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="riskPieChart"></canvas>
+        </div>
+      </div>
+      <div class="card chart-card wide">
+        <div class="card-header">
+          <h3>Fraud Probability Timeline</h3>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="probLineChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transaction type breakdown -->
+    <div class="charts-row">
+      <div class="card chart-card">
+        <div class="card-header"><h3>Transaction Types</h3></div>
+        <div class="chart-wrap"><canvas id="typeBarChart"></canvas></div>
+      </div>
+      <div class="card chart-card wide">
+        <div class="card-header"><h3>Recent Transactions</h3></div>
+        <div class="table-wrap">
+          <table class="tx-table" id="historyTable">
+            <thead>
+              <tr>
+                <th>#</th><th>Type</th><th>Amount</th>
+                <th>Prob %</th><th>Anomaly</th><th>Status</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr><td colspan="7" class="empty-row">No transactions yet — run a simulation or analyze one.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────── ANALYZE PAGE ─────────────────── -->
+  <section class="page" id="page-analyze">
+    <div class="analyze-layout">
+
+      <!-- Left: Input form -->
+      <div class="card form-card">
+        <div class="card-header">
+          <h2>🔍 Analyze Transaction</h2>
+          <p class="card-sub">Enter transaction details to get an instant AI risk score</p>
+        </div>
+
+        <!-- Quick scenario buttons -->
+        <div class="scenario-row">
+          <button class="scenario-btn green" onclick="fillScenario('normal')">
+            🟢 Normal Payment
+          </button>
+          <button class="scenario-btn red" onclick="fillScenario('suspicious')">
+            🔴 Suspicious Transfer
+          </button>
+          <button class="scenario-btn blue" onclick="fillScenario('highvalue')">
+            💼 High-Value Genuine
+          </button>
+        </div>
+
+        <form id="txForm" class="tx-form">
+          <div class="form-grid">
+            <div class="form-group span2">
+              <label>Transaction Amount ($)</label>
+              <input type="number" id="f-amount" value="500" min="0" step="100" required />
+            </div>
+
+            <div class="form-group">
+              <label>Transaction Type</label>
+              <select id="f-type">
+                <option value="PAYMENT">PAYMENT</option>
+                <option value="TRANSFER">TRANSFER</option>
+                <option value="CASH_OUT">CASH_OUT</option>
+                <option value="CASH_IN">CASH_IN</option>
+                <option value="DEBIT">DEBIT</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Sender Balance Before ($)</label>
+              <input type="number" id="f-old-bal" value="10000" min="0" step="1000" />
+            </div>
+
+            <div class="form-group">
+              <label>Sender Balance After ($) <span class="hint">UI only</span></label>
+              <input type="number" id="f-new-bal" value="9500" min="0" step="1000" />
+            </div>
+
+            <div class="form-group">
+              <label>Dest. Balance Before ($)</label>
+              <input type="number" id="f-dest-old" value="0" min="0" step="1000" />
+            </div>
+
+            <div class="form-group">
+              <label>Dest. Balance After ($) <span class="hint">UI only</span></label>
+              <input type="number" id="f-dest-new" value="0" min="0" step="1000" />
+            </div>
+
+            <div class="form-group span2">
+              <label>Customer Typical Amount ($)</label>
+              <input type="number" id="f-cust-avg" value="2000" min="0" step="100" />
+              <p class="field-help">Customer's historical average transaction amount. Enter 0 if unknown.</p>
+            </div>
+
+            <div class="form-group span2">
+              <label class="checkbox-label">
+                <input type="checkbox" id="f-familiar" checked />
+                <span class="checkmark"></span>
+                Familiar customer transaction pattern
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" class="analyze-btn" id="analyzeBtn">
+            <span class="btn-icon">🔍</span>
+            <span class="btn-text">Analyze Transaction</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Right: Result panel -->
+      <div class="result-panel" id="resultPanel">
+        <!-- Empty state -->
+        <div class="result-empty" id="resultEmpty">
+          <div class="empty-icon">🛡️</div>
+          <h3>Ready to Analyze</h3>
+          <p>Fill in the transaction details and click <strong>Analyze Transaction</strong> to get an instant AI risk assessment.</p>
+          <div class="feature-list">
+            <div class="feature-item">🤖 Random Forest classifier</div>
+            <div class="feature-item">🔬 Isolation Forest anomaly detection</div>
+            <div class="feature-item">👤 Customer context layer</div>
+          </div>
+        </div>
+
+        <!-- Result display (hidden until result arrives) -->
+        <div class="result-content hidden" id="resultContent">
+          <div class="risk-banner" id="riskBanner">
+            <div class="risk-emoji" id="riskEmoji">🟢</div>
+            <div class="risk-info">
+              <div class="risk-status" id="riskStatus">LOW RISK</div>
+              <div class="risk-action" id="riskAction">APPROVE TRANSACTION</div>
+            </div>
+          </div>
+
+          <!-- Gauge -->
+          <div class="gauge-wrap">
+            <canvas id="gaugeChart" width="260" height="150"></canvas>
+            <div class="gauge-label">
+              <span id="gaugeValue">0</span>%
+              <small>Fraud Probability</small>
+            </div>
+          </div>
+
+          <!-- Detail chips -->
+          <div class="detail-chips">
+            <div class="chip" id="chip-prob">
+              <div class="chip-label">Fraud Probability</div>
+              <div class="chip-value" id="detail-prob">—</div>
+            </div>
+            <div class="chip" id="chip-anomaly">
+              <div class="chip-label">Anomaly</div>
+              <div class="chip-value" id="detail-anomaly">—</div>
+            </div>
+            <div class="chip">
+              <div class="chip-label">Anomaly Score</div>
+              <div class="chip-value" id="detail-score">—</div>
+            </div>
+          </div>
+
+          <!-- Reasons -->
+          <div class="reasons-box">
+            <h4>💡 AI Explanation</h4>
+            <ul class="reasons-list" id="reasonsList"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────── SIMULATE PAGE ─────────────────── -->
+  <section class="page" id="page-simulate">
+    <div class="sim-header card">
+      <div class="sim-controls">
+        <div class="form-group">
+          <label>Number of transactions</label>
+          <input type="number" id="sim-count" value="30" min="5" max="200" />
+        </div>
+        <div class="form-group">
+          <label>Suspicious mix (%)</label>
+          <input type="number" id="sim-mix" value="20" min="0" max="100" />
+        </div>
+        <div class="sim-btns">
+          <button class="analyze-btn" id="simStartBtn" onclick="startSimulation()">
+            ▶ Run Simulation
+          </button>
+          <button class="outline-btn" onclick="clearHistory()">🗑 Clear History</button>
+        </div>
+      </div>
+      <!-- live counter row -->
+      <div class="sim-live-stats hidden" id="simLiveStats">
+        <div class="live-pill danger">🔴 <span id="simHighCount">0</span> High</div>
+        <div class="live-pill warning">🟡 <span id="simMedCount">0</span> Medium</div>
+        <div class="live-pill success">🟢 <span id="simLowCount">0</span> Low</div>
+        <div class="live-pill">⚡ <span id="simTotalCount">0</span> Total</div>
+      </div>
+    </div>
+
+    <div class="sim-charts-row">
+      <div class="card chart-card">
+        <div class="card-header"><h3>Live Risk Distribution</h3></div>
+        <div class="chart-wrap"><canvas id="simPieChart"></canvas></div>
+      </div>
+      <div class="card chart-card wide">
+        <div class="card-header"><h3>Fraud Probability Stream</h3></div>
+        <div class="chart-wrap"><canvas id="simBarChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>Transaction Stream</h3></div>
+      <div class="table-wrap">
+        <table class="tx-table" id="simTable">
+          <thead>
+            <tr>
+              <th>#</th><th>Type</th><th>Amount</th>
+              <th>Prob %</th><th>Anomaly</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="simBody">
+            <tr><td colspan="6" class="empty-row">Run the simulation to see results.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────── ABOUT PAGE ─────────────────── -->
+  <section class="page" id="page-about">
+    <div class="about-layout">
+      <div class="card about-card">
+        <h2>🛡️ About ShieldAI</h2>
+        <p class="about-lead">
+          ShieldAI is a real-time payment fraud detection prototype built for a hackathon.
+          It combines two ML models with a customer-context layer to minimize false alerts
+          while catching genuine fraud.
+        </p>
+
+        <div class="arch-grid">
+          <div class="arch-block">
+            <div class="arch-icon">🌲</div>
+            <h4>Random Forest</h4>
+            <p>150-tree ensemble classifier trained on 300k PaySim transactions.
+               Uses <code>balanced_subsample</code> to handle extreme class imbalance (~99.8% legit).</p>
+          </div>
+          <div class="arch-block">
+            <div class="arch-icon">🔬</div>
+            <h4>Isolation Forest</h4>
+            <p>Anomaly detector trained on <em>legitimate transactions only</em>.
+               Catches novel fraud patterns the RF hasn't seen before.</p>
+          </div>
+          <div class="arch-block">
+            <div class="arch-icon">👤</div>
+            <h4>Customer Context</h4>
+            <p>Checks if the transaction fits the customer's historical behaviour.
+               Reduces false alerts for genuine high-value customers.</p>
+          </div>
+          <div class="arch-block">
+            <div class="arch-icon">⚡</div>
+            <h4>4-Tier Decisions</h4>
+            <p>HIGH RISK → MEDIUM RISK → LOW RISK (Context Match) → LOW RISK.
+               The HIGH tier can never be overridden by customer context.</p>
+          </div>
+        </div>
+
+        <h3>Decision Logic</h3>
+        <div class="decision-flow">
+          <div class="flow-step danger">≥ 80% probability → 🔴 HIGH RISK<br/><small>Context CANNOT override</small></div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step warning">≥ 30% prob OR anomaly → 🟡 MEDIUM RISK<br/><small>Unless customer context clears it</small></div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step info">Normal customer pattern → 🔵 LOW RISK - CONTEXT MATCH<br/><small>Amount ≤ 1.5× avg + familiar pattern</small></div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-step success">All clear → 🟢 LOW RISK<br/><small>Approve transaction</small></div>
+        </div>
+
+        <h3>Features Used (No Data Leakage)</h3>
+        <div class="feature-chips">
+          <span class="f-chip">step</span>
+          <span class="f-chip">amount</span>
+          <span class="f-chip">oldbalanceOrg</span>
+          <span class="f-chip">oldbalanceDest</span>
+          <span class="f-chip">type_PAYMENT</span>
+          <span class="f-chip">type_TRANSFER</span>
+          <span class="f-chip">type_CASH_OUT</span>
+          <span class="f-chip">type_CASH_IN</span>
+          <span class="f-chip">type_DEBIT</span>
+          <span class="f-chip strike">❌ newbalanceOrig</span>
+          <span class="f-chip strike">❌ newbalanceDest</span>
+        </div>
+
+        <h3>⚠️ Limitations</h3>
+        <ul class="limit-list">
+          <li>PaySim is <strong>synthetic</strong> data — real fraud is messier and adversarial</li>
+          <li>"Real-time" simulation is a demo — no Kafka or streaming pipeline</li>
+          <li>Customer context is computed offline, not from a live profile store</li>
+          <li>No concept drift detection — model needs periodic retraining</li>
+          <li>Single-machine, in-memory — not horizontally scalable</li>
+        </ul>
+
+        <div class="api-box">
+          <h3>🔌 API Endpoints</h3>
+          <div class="endpoint-list">
+            <div class="endpoint"><span class="method get">GET</span> <code>/health</code> — Model status</div>
+            <div class="endpoint"><span class="method post">POST</span> <code>/predict</code> — Score one transaction</div>
+            <div class="endpoint"><span class="method post">POST</span> <code>/simulate</code> — Batch random scoring</div>
+            <div class="endpoint"><span class="method get">GET</span> <code>/history</code> — Transaction history</div>
+            <div class="endpoint"><span class="method get">GET</span> <code>/stats</code> — Aggregate stats</div>
+            <div class="endpoint"><span class="method get">GET</span> <code>/api/docs</code> — Swagger UI</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Toast notification -->
+<div class="toast hidden" id="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
